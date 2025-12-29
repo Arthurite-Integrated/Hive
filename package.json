@@ -5,9 +5,9 @@
   "main": "index.js",
   "scripts": {
     "start:dev": "nodemon app/server.js",
-    "start:prod": "pm2 start ecosystem.config.cjs --env production",
-    "stop:prod": "pm2 stop ecosystem.config.cjs --env production",
-    "build": "esbuild app/server.js --bundle --platform=node --outfile=dist/server.js --minify"
+    "start:prod": "pm2 delete ecosystem.config.cjs && pm2 start ecosystem.config.cjs --env production",
+    "stop:prod": "pm2 delete ecosystem.config.cjs",
+    "build": "esbuild app/server.js --bundle --platform=node --format=cjs --outfile=dist/server.cjs --minify"
   },
   "repository": "git+https://github.com/Arthurite-Integrated/Hive.git",
   "keywords": [],
