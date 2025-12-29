@@ -19,3 +19,7 @@ dist
 
 # Conncection Keys
 global-bundle.pem
+
+# act
+bin
+.secrets
