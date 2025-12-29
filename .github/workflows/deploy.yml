@@ -26,17 +26,16 @@ jobs:
         run: yarn install --frozen-lockfile
       
       - name: Setup SSH
-        run: 
-          - mkdir -p ~/.ssh
-          - echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
-          - chmod 600 ~/.ssh/id_rsa
-          - ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
       
-      - name Deploy to EC2 Instance
+      - name: Deploy to EC2 Instance
         run: rsync -avz --delete --exclude 'node_modules' --exclude 'package.json' \
                --exclude '.env' --exclude '.env.*' --exclude '*.env' \
                --exclude 'dist' ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/ubuntu/hive
 
       - name: Restart the server
         run: ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "pm2 restart ecosystem.config.cjs"
-        
