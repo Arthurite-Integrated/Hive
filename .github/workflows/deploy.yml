@@ -42,4 +42,4 @@ jobs:
 
       - name: Restart the server
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "export PATH=$PATH:/usr/local/bin && yarn install && pm2 restart ecosystem.config.cjs"
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "source ~/.bashrc && cd ~/hive && yarn install && pm2 restart ecosystem.config.cjs"
