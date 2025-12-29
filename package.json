@@ -4,7 +4,10 @@
   "description": "The Online Teaching SaaS platform provides a flexible, private, and community-driven teaching environment",
   "main": "index.js",
   "scripts": {
-    "start:dev": "nodemon app/server.js"
+    "start:dev": "nodemon app/server.js",
+    "start:prod": "pm2 start ecosystem.config.cjs --env production",
+    "stop:prod": "pm2 stop ecosystem.config.cjs --env production",
+    "build": "esbuild app/server.js --bundle --platform=node --outfile=dist/server.js --minify"
   },
   "repository": "git+https://github.com/Arthurite-Integrated/Hive.git",
   "keywords": [],
@@ -29,5 +32,8 @@
   "type": "module",
   "imports": {
     "#*": "./src/*.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
   }
 }
