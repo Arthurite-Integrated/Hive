@@ -41,4 +41,5 @@ jobs:
             ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/ubuntu/hive
 
       - name: Restart the server
-        run: ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "yarn install &&pm2 restart ecosystem.config.cjs"
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "npm install -g yarn && yarn install && pm2 restart ecosystem.config.cjs"
