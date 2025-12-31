@@ -1,0 +1,17 @@
+export const ModelCollections = {
+  INSTRUCTOR: "instructor",
+  STUDENT: "student",
+  PARENT: "parent",
+  COURSE: "course",
+  LESSON: "lesson",
+  CHAPTER: "chapter",
+  SECTION: "section",
+  QUESTION: "question",
+  ANSWER: "answer",
+  COMMENT: "comment",
+  RATING: "rating",
+  REVIEW: "review",
+  NOTIFICATION: "notification",
+  MESSAGE: "message",
+  LOCATION: "location",
+}
