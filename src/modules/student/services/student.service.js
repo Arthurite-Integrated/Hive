@@ -1,20 +1,20 @@
 import { UserTypes } from "#enums/user.enums";
-import { Instructor } from "#models/instructor.model";
+import { Student } from "#models/student.model";
 import { BaseUserService } from "#services/base.user.service";
 
-export class InstructorService extends BaseUserService {
+export class StudentService extends BaseUserService {
   static instance = null;
 
-  /** @returns {InstructorService} */
+  /** @returns {StudentService} */
   static getInstance() {
     if (!this.instance) {
-      this.instance = new InstructorService();
+      this.instance = new StudentService();
     }
     return this.instance;
   }
 
   /** @private */
   constructor() {
-    super(UserTypes.INSTRUCTOR, Instructor);
+    super(UserTypes.STUDENT, Student);
   }
 }

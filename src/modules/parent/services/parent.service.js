@@ -1,20 +1,21 @@
 import { UserTypes } from "#enums/user.enums";
-import { Instructor } from "#models/instructor.model";
+import { Parent } from "#models/parent.model";
 import { BaseUserService } from "#services/base.user.service";
+import _ from "lodash";
 
-export class InstructorService extends BaseUserService {
+export class ParentService extends BaseUserService {
   static instance = null;
 
-  /** @returns {InstructorService} */
+  /** @returns {ParentService} */
   static getInstance() {
     if (!this.instance) {
-      this.instance = new InstructorService();
+      this.instance = new ParentService();
     }
     return this.instance;
   }
 
   /** @private */
   constructor() {
-    super(UserTypes.INSTRUCTOR, Instructor);
+    super(UserTypes.PARENT, Parent);
   }
 }

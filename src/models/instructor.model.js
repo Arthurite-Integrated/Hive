@@ -1,5 +1,5 @@
 import { BYTE_LENGTH } from "#constants/auth/password-hash";
-import { emailRegex } from "#constants/regex.constant";
+import { emailRegex, phoneNumberRegex } from "#constants/regex.constant";
 import { ModelCollections } from "#enums/models/index";
 import { UserTypes } from "#enums/user.enums";
 import { compare, genSalt, hash } from "bcryptjs";
@@ -24,6 +24,18 @@ const InstructorSchema = new Schema({
     match: [emailRegex, "Please enter a valid email address"],
     unique: [true, "Email already exists"],
   },
+  emailVerified: {
+    type: Boolean,
+    default: false,
+  },
+  emailVerifiedAt: {
+    type: Date,
+    required: false,
+  },
+  lastLoginAt: {
+    type: Date,
+    required: false,
+  },
   avatar: {
     type: String,
     required: false,
@@ -31,6 +43,15 @@ const InstructorSchema = new Schema({
   bio: {
     type: String,
     required: false,
+  },
+  phone: {
+    type: String,
+    required: false,
+    match: [phoneNumberRegex, "Please enter a valid phone number"],
+  },
+  phoneVerified: {
+    type: Boolean,
+    default: false,
   },
   userType: {
     type: String,
@@ -61,6 +82,10 @@ const InstructorSchema = new Schema({
   mfaEnabled: {
     type: Boolean,
     default: false,
+  },
+  onboarded: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,
@@ -78,7 +103,7 @@ InstructorSchema.methods.setPassword = async function (password) {
 
 InstructorSchema.methods.validatePassword = async function (password) {
   if (!this.salt || !this.hash) return false;
-  return compare(password, this.hash, this.salt);
+  return compare(password, this.hash);
 }
 
 export const Instructor = model(collectionName, InstructorSchema);

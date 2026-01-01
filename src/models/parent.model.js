@@ -1,4 +1,9 @@
+import { BYTE_LENGTH } from "#constants/auth/password-hash";
 import { emailRegex, phoneNumberRegex } from "#constants/regex.constant";
+import { ModelCollections } from "#enums/models/index";
+import { LINK_STATUS } from "#enums/parent/index";
+import { UserTypes } from "#enums/user.enums";
+import { compare, genSalt, hash } from "bcryptjs";
 import { Schema, model } from "mongoose";
 
 const collectionName = ModelCollections.PARENT;
@@ -20,11 +25,17 @@ const ParentSchema = new Schema({
     match: [emailRegex, "Please enter a valid email address"],
     unique: [true, "Email already exists"],
   },
-  password: {
-    type: String,
-    required: [true, "Password is required"],
-    minlength: [8, "Password must be at least 8 characters long"],
-    maxlength: [100, "Password must be less than 100 characters"],
+  emailVerified: {
+    type: Boolean,
+    default: false,
+  },
+  emailVerifiedAt: {
+    type: Date,
+    required: false,
+  },
+  lastLoginAt: {
+    type: Date,
+    required: false,
   },
   avatar: {
     type: String,
@@ -33,10 +44,6 @@ const ParentSchema = new Schema({
   bio: {
     type: String,
     required: false,
-  },
-  emailVerified: {
-    type: Boolean,
-    default: false,
   },
   phone: {
     type: String,
@@ -47,20 +54,85 @@ const ParentSchema = new Schema({
     type: Boolean,
     default: false,
   },
+  userType: {
+    type: String,
+    enum: Object.values(UserTypes),
+    default: UserTypes.PARENT,
+  },
+  isSuperAdmin: {
+    type: Boolean,
+    default: false,
+  },
   location: {
     type: Schema.Types.ObjectId,
     ref: ModelCollections.LOCATION,
     required: false,
   },
-  linkedStudents: {
-    type: [Schema.Types.ObjectId],
-    ref: ModelCollections.STUDENT,
+  passwordChangedAt: {
+    type: Date,
     required: false,
   },
+  salt: {
+    type: String,
+    required: false,
+  },
+  hash: {
+    type: String,
+    required: false,
+  },
+  mfaEnabled: {
+    type: Boolean,
+    default: false,
+  },
+  onboarded: {
+    type: Boolean,
+    default: false
+  },
+
+  /* Linked students settings */
+  linkedStudents: [{
+    studentId: {
+      type: Schema.Types.ObjectId,
+      ref: ModelCollections.STUDENT,
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: { 
+        values: Object.values(LINK_STATUS),
+        message: "Invalid link status: {{VALUE}}" 
+      },
+      default: LINK_STATUS.PENDING,
+      required: [true, "Link status is required"],
+    },
+    linkedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    approvedAt: {
+      type: Date,
+      required: false
+    }
+  }],
+
+  /* Settings */
 }, {
   timestamps: true,
   versionKey: false,
   virtuals: true,
 });
+
+ParentSchema.methods.setPassword = async function (password) {
+  const salt = await genSalt(BYTE_LENGTH);
+  this.salt = salt;
+  this.hash = await hash(password, salt);
+  this.passwordChangedAt = new Date();
+  return this;
+}
+
+ParentSchema.methods.validatePassword = async function (password) {
+  if (!this.salt || !this.hash) return false;
+  return compare(password, this.hash);
+}
 
 export const Parent = model(collectionName, ParentSchema);

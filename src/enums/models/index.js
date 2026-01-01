@@ -1,4 +1,5 @@
 export const ModelCollections = {
+  ACTIVITY_LOG: "activity_log",
   INSTRUCTOR: "instructor",
   STUDENT: "student",
   PARENT: "parent",

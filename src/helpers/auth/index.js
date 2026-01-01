@@ -1,6 +1,7 @@
 import { webcrypto } from "crypto";
 import { v4 } from "uuid";
 import axios from "axios";
+import _ from "lodash";
 
 export const generateOTP = () => {
   return webcrypto.getRandomValues(new Uint32Array(1)).toString().slice(0, 6);
@@ -30,4 +31,14 @@ export const getLocationFromIP = async (ip) => {
   } catch (error) {
     return "Unknown Location";
   }
+}
+
+export const generateAuthenticatedData = (modelData) => {
+  const data = {
+    ...modelData,
+    isAuthenticated: true,
+    authenticatedAt: new Date()
+  }
+  console.log(data);
+  return _.omit(data, ["salt", "hash"]);
 }

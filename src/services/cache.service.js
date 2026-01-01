@@ -33,7 +33,8 @@ export class CacheService {
     return redis.redis;
   }
 
-  set = async (key, value, ttl = null ) => {
+  set = async (key, value, ttl = TTL.IN_30_MINUTES ) => {
+    console.log(`value: ${JSON.stringify(value, null, 2)}`);
     await this.redis.set(key, JSON.stringify(value), { EX: ttl });
   }
 

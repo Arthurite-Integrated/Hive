@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import { config } from "#config/config";
 import { throwUnauthorizedError } from "#helpers/errors/throw-error";
 import { CacheService } from "#services/cache.service";
+import { JwtAction } from "#enums/auth/index";
 
 export class JwtService {
   static instance = null;
@@ -54,12 +55,17 @@ export class JwtService {
     try {
       const token = this.extractTokenFromHeader(req);
       if (!token) {
-        throwUnauthorizedError("Token is required");
+        throwUnauthorizedError("Token not found. Please ensure Bearer token is provided.");
       }
+
       const decoded = this.verifyToken(token);
       
       const data = await this.cacheService.get(decoded.authId);
       if (!data) throwUnauthorizedError("Unauthorized");
+
+      if (data.action && !Object.values(JwtAction).includes(data.action) && !data.isAuthenticated) {
+        throwUnauthorizedError("Something went wrong,")
+      }
       
       req.authData = data;
       next();
