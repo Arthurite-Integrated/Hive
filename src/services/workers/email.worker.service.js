@@ -19,24 +19,69 @@ export class EmailWorkerService {
     this.emailService = EmailService.getInstance();
     const redisClient = getBullMQRedisClient();
     this.worker = new Worker(QueueNames.EMAIL, async (job) => {
-      const { message, template, locals } = job.data;
-      await this.emailService.send({ message, template, locals });
+      try {
+        logger.info(`Processing email job ${job.id}`, { jobName: job.name, recipient: job.data?.message?.to });
+        const { message, template, locals } = job.data;
+        await this.emailService.send({ message, template, locals });
+        logger.info(`Email job ${job.id} processed successfully`);
+      } catch (error) {
+        logger.error(`Error processing email job ${job.id}`, {
+          error: error.message,
+          details: error.details || error.originalError?.details,
+          stack: error.stack,
+          recipient: job.data?.message?.to,
+        });
+        throw error; // Re-throw to mark job as failed
+      }
       }, 
       { 
         concurrency, 
         connection: redisClient,
+        lockDuration: 60000, // 60 seconds - how long a job can be processed before considered stalled
+        maxStalledCount: 1, // Max times a job can be retried if stalled
+        removeOnComplete: {
+          age: 3600, // 1 hour
+          count: 1000,
+        },
+        removeOnFail: {
+          age: 86400, // 24 hours
+        },
       }
     );
     this._setupJobListeners();
   }
 
   _setupJobListeners = () => {
-    this.worker.on("completed", async (jobId, result) => {
-      logger.info(`Email job ${jobId} completed`, result);
+    this.worker.on("ready", () => {
+      logger.info("Email worker is ready to process jobs");
     });
 
-    this.worker.on("failed", async (jobId, error) => {
-      logger.info(`Email job ${jobId} failed`, error);
+    this.worker.on("active", (job) => {
+      logger.info(`Email job ${job.id} is now active`);
+    });
+
+    this.worker.on("completed", async (job, result) => {
+      logger.info(`Email job ${job.id} completed`, result);
+    });
+
+    this.worker.on("failed", async (job, error) => {
+      logger.error(`Email job ${job?.id || 'unknown'} failed`, {
+        error: error.message,
+        stack: error.stack,
+        jobData: job?.data,
+      });
+    });
+
+    this.worker.on("stalled", (jobId) => {
+      logger.warn(`Email job ${jobId} stalled - taking longer than expected`);
+    });
+
+    this.worker.on("error", (error) => {
+      logger.error("Email worker error", error);
+    });
+
+    this.worker.on("closed", () => {
+      logger.warn("Email worker closed");
     });
   }
 
