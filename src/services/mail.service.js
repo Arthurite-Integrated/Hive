@@ -3,9 +3,29 @@ import { EmailProviders } from "#enums/mail/index";
 import Email from "email-templates";
 import { createTransport } from "nodemailer";
 import Handlebars from "handlebars";
+import fs from "fs";
 import path from "path";
 
 const mail = config.mail;
+
+// Determine email templates path
+const getEmailsPath = () => {
+    const isProduction = config.env === 'production';
+    const emailsPath = isProduction 
+        ? path.join(process.cwd(), 'dist/emails')
+        : path.join(process.cwd(), 'src/emails');
+    
+    console.log('📧 Environment:', config.env);
+    console.log('📧 Email templates path:', emailsPath);
+    console.log('📧 Path exists:', fs.existsSync(emailsPath));
+    
+    if (fs.existsSync(emailsPath)) {
+        const contents = fs.readdirSync(emailsPath);
+        console.log('📧 Available templates:', contents);
+    }
+    
+    return emailsPath;
+};
 
 export class EmailService {
   static instance = null;
@@ -52,7 +72,7 @@ export class EmailService {
         from: sender,
       },
       views: {
-        root: "src/emails",
+        root: getEmailsPath(),
         options: {
           extension: "hbs",
           engineSource: {
@@ -83,5 +103,10 @@ export class EmailService {
       ...options,
       locals: options.locals
     })
+  }
+  
+  testConnection = async () => {
+    const transport = this.getTransport(EmailProviders.HOSTINGER);
+    return await transport.verify();
   }
 }

@@ -42,6 +42,12 @@ export class EmailQueueService {
 
   add = async (jobName, data) => {
     await this.queue.add(jobName, data, {
+      attempts: 3, // Retry failed jobs up to 3 times
+      backoff: {
+        type: 'exponential',
+        delay: 2000, // Start with 2 second delay
+      },
+      timeout: 45000, // 45 seconds timeout for the entire job
       removeOnComplete: {
         age: TTL.IN_AN_HOUR,
         count: 1000,
