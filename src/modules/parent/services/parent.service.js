@@ -1,6 +1,6 @@
 import { UserTypes } from "#enums/user.enums";
 import { Parent } from "#models/parent.model";
-import { BaseUserService } from "#services/base.user.service";
+import { BaseUserService } from "#services/bases/base.user.service";
 import _ from "lodash";
 
 export class ParentService extends BaseUserService {

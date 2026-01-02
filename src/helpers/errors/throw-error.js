@@ -7,9 +7,8 @@ import {
   createUnauthorizedError,
   createUnprocessableEntityError,
   createUnsupportedMediaType,
-  CustomError,
 } from "#errors/index";
-import { ReasonPhrases } from "http-status-codes";
+import { createInternalServerError } from "#errors/InternalServerError";
 
 export const throwBadRequestError = (message) => {
   throw createBadRequestError(message);
@@ -44,5 +43,5 @@ export const throwUnsupportedMediaTypeError = (message) => {
 };
 
 export const throwServerError = (message) => {
-  throw new CustomError(message || ReasonPhrases.INTERNAL_SERVER_ERROR);
+  throw createInternalServerError(message);
 };

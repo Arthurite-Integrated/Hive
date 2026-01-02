@@ -6,6 +6,7 @@ import { verifyOTPSchema } from "#validator/verification.schema";
 import { instructorRouter } from "#modules/instructor/routes/instructor.routes";
 import { parentRouter } from "#modules/parent/routes/parent.routes";
 import { studentRouter } from "#modules/student/routes/student.routes";
+import { googleRouter } from "./oauth/google.routes.js";
 
 export const authRouter = Router();
 const authController = AuthController.getInstance();
@@ -15,6 +16,9 @@ const jwtService = JwtService.getInstance();
 authRouter.use('/instructor', instructorRouter)
 authRouter.use('/parent', parentRouter)
 authRouter.use('/student', studentRouter)
+
+/** @info - OAuth */
+authRouter.use('/google', googleRouter)
 
 authRouter.use(jwtService.validateToken)
 

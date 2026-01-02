@@ -31,6 +31,10 @@ const EnvSchema = z.object({
   HOSTINGER_SECURE: z.boolean().default(true),
 
   ENCRYPTION_KEY: z.string(),
+
+  GOOGLE_CLIENT_ID: z.string(),
+  GOOGLE_CLIENT_SECRET: z.string(),
+  GOOGLE_REDIRECT_URI: z.string(),
 })
 
 export const env = EnvSchema.parse(process.env);

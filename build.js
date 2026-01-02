@@ -22,7 +22,8 @@ async function build() {
                 'pug',
                 'ejs',
                 'consolidate',
-                'preview-email'
+                'preview-email',
+                'googleapis'
             ],
         });
 
