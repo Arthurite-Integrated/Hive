@@ -17,6 +17,7 @@ import { EncryptionService } from "#services/encryption.service";
 import { JwtService } from "#services/jwt.service";
 import { EmailQueueService } from "#services/queues/email.queue.service";
 import _ from "lodash";
+import { GoogleOAuthService } from "./oauth/google.oauth.service.js";
 
 export class AuthService {
   static instance = null;
@@ -40,6 +41,8 @@ export class AuthService {
     this.jwtService = JwtService.getInstance();
     this.encryptionService = EncryptionService.getInstance();
     this.cacheService = CacheService.getInstance();
+
+    this.googleOAuthService = GoogleOAuthService.getInstance();
     
     /** Models */
     this.instructorModel = Instructor;
@@ -158,5 +161,19 @@ export class AuthService {
     const token = this.jwtService.generateToken(authId);
 
     return { token, user };
+  }
+
+  /** @info - OAuth */
+  authenticateWithGoogle = async (data) => {
+    return this.googleOAuthService.authenticate(data.userType, data.action);
+  }
+
+  loginWithGoogle = async (data) => {
+    console.log(data)
+    return this.googleOAuthService.login(data.code, data.state);
+  }
+
+  signupWithGoogle = async (data) => {
+    return this.googleOAuthService.signup(data.code, data.state);
   }
 }

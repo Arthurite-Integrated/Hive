@@ -4,7 +4,7 @@ import { JwtAction } from "#enums/auth/index";
 import { EmailJobNames } from "#enums/queue/index";
 import { UserTypes } from "#enums/user.enums";
 import { generateAuthenticatedData, generateAuthId, generateOTP, generateOTPId } from "#helpers/auth/index";
-import { throwBadRequestError } from "#helpers/errors/throw-error";
+import { throwBadRequestError, throwNotFoundError } from "#helpers/errors/throw-error";
 import { CacheService } from "#services/cache.service";
 import { EncryptionService } from "#services/encryption.service";
 import { JwtService } from "#services/jwt.service";
@@ -100,11 +100,11 @@ export class BaseUserService {
 
     switch (loginType) {
       case AUTH_LOGIN_TYPES.PASSWORD:
-        if (!password) throwValidationError("Password is required");
+        if (!password) throwBadRequestError("Password is required");
 
         const isPasswordValid = await user.validatePassword(password);
 
-        if (!isPasswordValid) throwValidationError("Invalid password");
+        if (!isPasswordValid) throwBadRequestError("Invalid password");
 
         await this.cacheService.set(authId, generateAuthenticatedData(user.toObject()))
 

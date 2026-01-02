@@ -58,7 +58,11 @@ export class ZodEngine {
       try {
         const params = req.params || {};
         const output = schema.parse(params);
-        req.params = output;
+
+        Object.keys(output).forEach((key) => {
+          req.params[key] = output[key];
+        });
+        
         next();
       } catch (error) {
       if (error instanceof z.ZodError) {
@@ -81,7 +85,11 @@ export class ZodEngine {
       try {
         const query = req.query || {};
         const output = schema.parse(query);
-        req.query = output;
+
+        Object.keys(output).forEach((key) => {
+          req.query[key] = output[key];
+        });
+
         next();
       } catch (error) {
         if (error instanceof z.ZodError) {

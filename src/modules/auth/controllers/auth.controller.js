@@ -89,4 +89,32 @@ export class AuthController {
       data,
     }, StatusCodes.OK)
   }
+
+  /** 
+   * @info - OAuth 
+   * */
+  /* ----Google---- */
+  googleOAuth = async (req, res) => {
+    const data = await this.authService.authenticateWithGoogle(req.query);
+    return sendSuccessResponse(res, {
+      message: "Google authentication url generated successfully",
+      data,
+    }, StatusCodes.OK)
+  }
+
+  loginWithGoogle = async (req, res) => {
+    const data = await this.authService.loginWithGoogle(req.query);
+    return sendSuccessResponse(res, {
+      message: "Google login successful",
+      data,
+    }, StatusCodes.OK)
+  }
+
+  signupWithGoogle = async (req, res) => {
+    const data = await this.authService.signupWithGoogle(req.query);
+    return sendSuccessResponse(res, {
+      message: "Google signup successful",
+      data,
+    }, StatusCodes.CREATED)
+  }
 }

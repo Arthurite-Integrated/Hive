@@ -5,6 +5,7 @@ import { createTransport } from "nodemailer";
 import Handlebars from "handlebars";
 import fs from "fs";
 import path from "path";
+import { logger } from "#utils/logger";
 
 const mail = config.mail;
 
@@ -15,13 +16,13 @@ const getEmailsPath = () => {
         ? path.join(process.cwd(), 'dist/emails')
         : path.join(process.cwd(), 'src/emails');
     
-    console.log('📧 Environment:', config.env);
-    console.log('📧 Email templates path:', emailsPath);
-    console.log('📧 Path exists:', fs.existsSync(emailsPath));
+    logger.info(`📧 Environment: ${config.env}`);
+    logger.info(`📧 Email templates path: ${emailsPath}`);
+    logger.info(`📧 Path exists: ${fs.existsSync(emailsPath)}`);
     
     if (fs.existsSync(emailsPath)) {
         const contents = fs.readdirSync(emailsPath);
-        console.log('📧 Available templates:', contents);
+        logger.info(`📧 Available templates: ${contents}`);
     }
     
     return emailsPath;
