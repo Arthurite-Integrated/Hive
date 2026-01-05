@@ -15,3 +15,8 @@ export const GoogleOAuthAction = {
   LOGIN: "login",
   SIGNUP: "signup",
 }
+
+export const FacebookOAuthAction = {
+  LOGIN: "login",
+  SIGNUP: "signup",
+};
