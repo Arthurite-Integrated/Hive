@@ -1,4 +1,5 @@
 import { emailRegex } from "#constants/regex.constant";
+import { AuthMethods } from "#enums/auth/index";
 import { ModelCollections } from "#enums/models/index";
 import { UserTypes } from "#enums/user.enums";
 import { Schema, model } from "mongoose";
@@ -74,6 +75,37 @@ const StudentSchema = new Schema({
     type: Boolean,
     default: false
   },
+
+  /** @info - OAuth */
+  authMethod: {
+    type: String,
+    enum: Object.values(AuthMethods),
+    default: AuthMethods.EMAIL,
+  },
+
+  facebook: {
+    type: {
+      accessToken: {
+        type: String,
+        required: [true, 'Access token is required'],
+      },
+      tokenType: {
+        type: String,
+        required: [true, 'Token type is required'],
+      },
+      expiresDate: {
+        type: Number,
+        required: [true, 'Expires in is required'],
+      },
+    },
+    required: [
+      function () {
+        return this.authMethod === 'facebook';
+      },
+      'Facebook credentials are required.'
+    ]
+  },
+
 
   /* Parent Relationship fields */
   linkedParent: {

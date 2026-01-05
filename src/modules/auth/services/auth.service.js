@@ -18,6 +18,7 @@ import { JwtService } from "#services/jwt.service";
 import { EmailQueueService } from "#services/queues/email.queue.service";
 import _ from "lodash";
 import { GoogleOAuthService } from "./oauth/google.oauth.service.js";
+import { FacebookOAuthService } from "./oauth/facebook.oauth.service.js";
 
 export class AuthService {
   static instance = null;
@@ -43,6 +44,7 @@ export class AuthService {
     this.cacheService = CacheService.getInstance();
 
     this.googleOAuthService = GoogleOAuthService.getInstance();
+    this.facebookOAuthService = FacebookOAuthService.getInstance();
     
     /** Models */
     this.instructorModel = Instructor;
@@ -175,5 +177,18 @@ export class AuthService {
 
   signupWithGoogle = async (data) => {
     return this.googleOAuthService.signup(data.code, data.state);
+  }
+
+  /** @info - Facebook OAuth */
+  authenticateWithFacebook = async (data) => {
+    return this.facebookOAuthService.authenticate(data.userType, data.action);
+  }
+
+  loginWithFacebook = async (data) => {
+    return this.facebookOAuthService.login(data.code, data.state);
+  }
+
+  signupWithFacebook = async (data) => {
+    return this.facebookOAuthService.signup(data.code, data.state);
   }
 }

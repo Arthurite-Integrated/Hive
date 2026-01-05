@@ -51,6 +51,13 @@ export const config = {
     clientSecret: env.GOOGLE_CLIENT_SECRET,
     redirectUri: env.GOOGLE_REDIRECT_URI,
   },
+  
+  facebook: {
+    clientId: env.FACEBOOK_CLIENT_ID,
+    clientSecret: env.FACEBOOK_CLIENT_SECRET,
+    redirectUri: env.FACEBOOK_REDIRECT_URI,
+  },
+  
 
   encryption: {
     key: env.ENCRYPTION_KEY,

@@ -137,6 +137,14 @@ const InstructorSchema = new Schema({
         type: String,
         required: [true, 'Access token is required'],
       },
+      tokenType: {
+        type: String,
+        required: [true, 'Token type is required'],
+      },
+      expiresDate: {
+        type: Number,
+        required: [true, 'Expires in is required'],
+      },
     },
     required: [
       function () {

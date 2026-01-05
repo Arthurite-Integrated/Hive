@@ -1,5 +1,6 @@
 import { BYTE_LENGTH } from "#constants/auth/password-hash";
 import { emailRegex, phoneNumberRegex } from "#constants/regex.constant";
+import { AuthMethods } from "#enums/auth/index";
 import { ModelCollections } from "#enums/models/index";
 import { LINK_STATUS } from "#enums/parent/index";
 import { UserTypes } from "#enums/user.enums";
@@ -87,6 +88,36 @@ const ParentSchema = new Schema({
   onboarded: {
     type: Boolean,
     default: false
+  },
+
+  /** @info - OAuth */
+  authMethod: {
+    type: String,
+    enum: Object.values(AuthMethods),
+    default: AuthMethods.EMAIL,
+  },
+
+  facebook: {
+    type: {
+      accessToken: {
+        type: String,
+        required: [true, 'Access token is required'],
+      },
+      tokenType: {
+        type: String,
+        required: [true, 'Token type is required'],
+      },
+      expiresDate: {
+        type: Number,
+        required: [true, 'Expires in is required'],
+      },
+    },
+    required: [
+      function () {
+        return this.authMethod === 'facebook';
+      },
+      'Facebook credentials are required.'
+    ]
   },
 
   /* Linked students settings */
