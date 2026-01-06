@@ -38,6 +38,12 @@ const EnvSchema = z.object({
 
   FACEBOOK_CLIENT_ID: z.string(),
   FACEBOOK_CLIENT_SECRET: z.string(),
+
+  APPLE_CLIENT_ID: z.string(),
+  APPLE_TEAM_ID: z.string(),
+  APPLE_KEY_ID: z.string(),
+  APPLE_PRIVATE_KEY: z.string(),
+  APPLE_REDIRECT_URI: z.string(),
 })
 
 export const env = EnvSchema.parse(process.env);

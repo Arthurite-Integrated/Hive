@@ -58,6 +58,14 @@ export const config = {
     redirectUri: env.FACEBOOK_REDIRECT_URI,
   },
   
+  apple: {
+    clientId: env.APPLE_CLIENT_ID,
+    teamId: env.APPLE_TEAM_ID,
+    keyId: env.APPLE_KEY_ID,
+    privateKey: env.APPLE_PRIVATE_KEY,
+    redirectUri: env.APPLE_REDIRECT_URI,
+  },
+  
 
   encryption: {
     key: env.ENCRYPTION_KEY,
