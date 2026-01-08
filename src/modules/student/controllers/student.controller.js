@@ -1,10 +1,11 @@
 export class StudentController {
-  static instance = null;
+	static instance = null;
 
-  static getInstance() {
-    if (!this.instance) this.instance = new StudentController();
-    return this.instance;
-  }
+	static getInstance() {
+		if (!StudentController.instance)
+			StudentController.instance = new StudentController();
+		return StudentController.instance;
+	}
 
-  constructor () {}
+	constructor() {}
 }

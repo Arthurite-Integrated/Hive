@@ -3,18 +3,18 @@ import { Student } from "#models/student.model";
 import { BaseUserService } from "#services/bases/base.user.service";
 
 export class StudentService extends BaseUserService {
-  static instance = null;
+	static instance = null;
 
-  /** @returns {StudentService} */
-  static getInstance() {
-    if (!this.instance) {
-      this.instance = new StudentService();
-    }
-    return this.instance;
-  }
+	/** @returns {StudentService} */
+	static getInstance() {
+		if (!StudentService.instance) {
+			StudentService.instance = new StudentService();
+		}
+		return StudentService.instance;
+	}
 
-  /** @private */
-  constructor() {
-    super(UserTypes.STUDENT, Student);
-  }
+	/** @private */
+	constructor() {
+		super(UserTypes.STUDENT, Student);
+	}
 }

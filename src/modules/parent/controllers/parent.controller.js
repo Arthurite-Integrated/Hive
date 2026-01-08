@@ -1,10 +1,9 @@
 export class ParentController {
-  static instance = null;
+	static instance = null;
 
-  static getInstance() {
-    if (!this.instance) this.instance = new ParentController();
-    return this.instance;
-  }
-
-  constructor () {}
+	static getInstance() {
+		if (!ParentController.instance)
+			ParentController.instance = new ParentController();
+		return ParentController.instance;
+	}
 }

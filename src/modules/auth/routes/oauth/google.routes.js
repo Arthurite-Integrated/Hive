@@ -1,26 +1,32 @@
-import { AuthController } from "#modules/auth/controllers/auth.controller";
-import { googleAuthenticateSchema, googleCallbackSchema } from "#validator/auth/oauth/google.auth.schema";
-import { ZodEngine } from "#validator/engine/zod.engine";
 import Router from "express";
+import { AuthController } from "#modules/auth/controllers/auth.controller";
 import { JwtService } from "#services/jwt.service";
+import {
+	googleAuthenticateSchema,
+	googleCallbackSchema,
+} from "#validator/auth/oauth/google.auth.schema";
+import { ZodEngine } from "#validator/engine/zod.engine";
 
 export const googleRouter = Router();
 const authController = AuthController.getInstance();
 const zodEngine = ZodEngine.getInstance();
 const jwtService = JwtService.getInstance();
-googleRouter.get('/',
-  zodEngine.validate.query(googleAuthenticateSchema),
-  authController.googleOAuth
-)
+googleRouter.get(
+	"/",
+	zodEngine.validate.query(googleAuthenticateSchema),
+	authController.googleOAuth,
+);
 
-googleRouter.get('/login/callback',
-  zodEngine.validate.query(googleCallbackSchema),
-  authController.loginWithGoogle
-)
+googleRouter.get(
+	"/login/callback",
+	zodEngine.validate.query(googleCallbackSchema),
+	authController.loginWithGoogle,
+);
 
-googleRouter.get('/signup/callback',
-  zodEngine.validate.query(googleCallbackSchema),
-  authController.signupWithGoogle
-)
+googleRouter.get(
+	"/signup/callback",
+	zodEngine.validate.query(googleCallbackSchema),
+	authController.signupWithGoogle,
+);
 
-googleRouter.use(jwtService.validateToken)
+googleRouter.use(jwtService.validateToken);

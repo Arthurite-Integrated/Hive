@@ -1,27 +1,25 @@
 export class BaseOAuthService {
-  static instance = null;
+	static instance = null;
 
-  constructor() {}
+	authenticate = async () => {};
 
-  authenticate = async () => {}
+	signup = async () => {};
 
-  signup = async () => {}
+	login = async () => {};
 
-  login = async () => {}
+	getAccessToken = async () => {};
 
-  getAccessToken = async () => {}
+	refreshToken = async () => {};
 
-  refreshToken = async () => {}
-  
-  revokeAccessToken = async () => {}
+	revokeAccessToken = async () => {};
 
-  revokeRefreshToken = async () => {}
+	revokeRefreshToken = async () => {};
 
-  validateAccessToken = async () => {}
+	validateAccessToken = async () => {};
 
-  validateRefreshToken = async () => {}
+	validateRefreshToken = async () => {};
 
-  getUserInfo = async () => {}
+	getUserInfo = async () => {};
 
-  getUserInfoFromAccessToken = async () => {}
+	getUserInfoFromAccessToken = async () => {};
 }
