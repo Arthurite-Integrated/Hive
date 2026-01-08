@@ -1,4 +1,4 @@
 export const EmailProviders = {
-  GMAIL: "gmail",
-  HOSTINGER: "hostinger",
-}
+	GMAIL: "gmail",
+	HOSTINGER: "hostinger",
+};

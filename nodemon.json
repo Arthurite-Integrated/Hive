@@ -1,6 +1,6 @@
 {
-  "watch": ["src", "app"],
-  "ext": "js,json,ts",
-  "ignore": ["src/config/env.js", "node_modules"],
-  "exec": "node app/server.js"
+	"watch": ["src", "app"],
+	"ext": "js,json,ts",
+	"ignore": ["src/config/env.js", "node_modules"],
+	"exec": "node app/server.js"
 }

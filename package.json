@@ -1,60 +1,65 @@
 {
-  "name": "hive",
-  "version": "1.0.0",
-  "description": "The Online Teaching SaaS platform provides a flexible, private, and community-driven teaching environment",
-  "main": "index.js",
-  "scripts": {
-    "start:dev": "nodemon app/server.js",
-    "start:prod": "pm2 delete ecosystem.config.cjs && pm2 start ecosystem.config.cjs --env production",
-    "stop:prod": "pm2 delete ecosystem.config.cjs",
-    "test:prod": "node dist/server.cjs",
-    "build": "node build.js"
-  },
-  "repository": "git+https://github.com/Arthurite-Integrated/Hive.git",
-  "keywords": [],
-  "author": "sp3c7r4 <sp3c7r40x00@gmail.com>",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Arthurite-Integrated/Hive/issues"
-  },
-  "homepage": "https://github.com/Arthurite-Integrated/Hive#readme",
-  "dependencies": {
-    "@bull-board/express": "^6.16.2",
-    "axios": "^1.13.2",
-    "bcryptjs": "^3.0.3",
-    "bullmq": "^5.66.4",
-    "chalk": "^5.6.2",
-    "crypto": "^1.0.1",
-    "crypto-js": "^4.2.0",
-    "dotenv": "^17.2.3",
-    "email-templates": "^12.0.3",
-    "express": "^5.2.1",
-    "googleapis": "^169.0.0",
-    "handlebars": "^4.7.8",
-    "http-status-codes": "^2.3.0",
-    "ioredis": "^5.8.2",
-    "jsonwebtoken": "^9.0.3",
-    "lodash": "^4.17.21",
-    "module-alias": "^2.2.3",
-    "mongoose": "^9.0.2",
-    "nodemailer": "^7.0.12",
-    "process": "^0.11.10",
-    "redis": "^5.10.0",
-    "socket.io": "^4.8.3",
-    "tsc": "^2.0.4",
-    "typescript": "^5.9.3",
-    "ulid": "^3.0.2",
-    "uuid": "^13.0.0",
-    "winston": "^3.19.0",
-    "zod": "^4.2.1"
-  },
-  "type": "module",
-  "imports": {
-    "#*": "./src/*.js"
-  },
-  "devDependencies": {
-    "copyfiles": "^2.4.1",
-    "esbuild": "^0.27.2",
-    "nodemon": "^3.1.11"
-  }
+	"name": "hive",
+	"version": "1.0.0",
+	"description": "The Online Teaching SaaS platform provides a flexible, private, and community-driven teaching environment",
+	"main": "index.js",
+	"scripts": {
+		"start:dev": "nodemon app/server.js",
+		"start:prod": "pm2 delete ecosystem.config.cjs && pm2 start ecosystem.config.cjs --env production",
+		"stop:prod": "pm2 delete ecosystem.config.cjs",
+		"test:prod": "node dist/server.cjs",
+		"build": "node build.js",
+		"biome:fix": "biome check --write",
+
+		"prepare": "lefthook install"
+	},
+	"repository": "git+https://github.com/Arthurite-Integrated/Hive.git",
+	"keywords": [],
+	"author": "sp3c7r4 <sp3c7r40x00@gmail.com>",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/Arthurite-Integrated/Hive/issues"
+	},
+	"homepage": "https://github.com/Arthurite-Integrated/Hive#readme",
+	"dependencies": {
+		"@bull-board/express": "^6.16.2",
+		"axios": "^1.13.2",
+		"bcryptjs": "^3.0.3",
+		"bullmq": "^5.66.4",
+		"chalk": "^5.6.2",
+		"crypto": "^1.0.1",
+		"crypto-js": "^4.2.0",
+		"dotenv": "^17.2.3",
+		"email-templates": "^12.0.3",
+		"express": "^5.2.1",
+		"googleapis": "^169.0.0",
+		"handlebars": "^4.7.8",
+		"http-status-codes": "^2.3.0",
+		"ioredis": "^5.8.2",
+		"jsonwebtoken": "^9.0.3",
+		"lodash": "^4.17.21",
+		"module-alias": "^2.2.3",
+		"mongoose": "^9.0.2",
+		"nodemailer": "^7.0.12",
+		"process": "^0.11.10",
+		"redis": "^5.10.0",
+		"socket.io": "^4.8.3",
+		"tsc": "^2.0.4",
+		"typescript": "^5.9.3",
+		"ulid": "^3.0.2",
+		"uuid": "^13.0.0",
+		"winston": "^3.19.0",
+		"zod": "^4.2.1"
+	},
+	"type": "module",
+	"imports": {
+		"#*": "./src/*.js"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.3.11",
+		"copyfiles": "^2.4.1",
+		"esbuild": "^0.27.2",
+		"lefthook": "^2.0.13",
+		"nodemon": "^3.1.11"
+	}
 }
