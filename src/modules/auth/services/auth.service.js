@@ -54,29 +54,55 @@ export class AuthService {
 		this.studentModel = Student;
 	}
 
-	registerInstructor = async (data) => {
-		return this.instructorService.register(data);
+	register = async (data) => {
+		switch (data.userType) {
+			case UserTypes.INSTRUCTOR:
+				return this.instructorService.register(data);
+			case UserTypes.PARENT:
+				return this.parentService.register(data);
+			case UserTypes.STUDENT:
+				return this.studentService.register(data);
+			default:
+				throwBadRequestError(`Invalid user type: ${data.userType}`);
+		}
 	};
 
-	loginInstructor = async (data) => {
-		return this.instructorService.login(data);
+	login = async (data) => {
+		switch (data.userType) {
+			case UserTypes.INSTRUCTOR:
+				return this.instructorService.login(data);
+			case UserTypes.PARENT:
+				return this.parentService.login(data);
+			case UserTypes.STUDENT:
+				return this.studentService.login(data);
+			default:
+				throwBadRequestError(`Invalid user type: ${data.userType}`);
+		}
 	};
 
-	registerParent = async (data) => {
-		return this.parentService.register(data);
-	};
+	// registerInstructor = async (data) => {
+	// 	return this.instructorService.register(data);
+	// };
 
-	loginParent = async (data) => {
-		return this.parentService.login(data);
-	};
+	// loginInstructor = async (data) => {
+	// 	return this.instructorService.login(data);
+	// };
 
-	registerStudent = async (data) => {
-		return this.studentService.register(data);
-	};
+	// registerParent = async (data) => {
+	// 	return this.parentService.register(data);
+	// };
 
-	loginStudent = async (data) => {
-		return this.studentService.login(data);
-	};
+	// loginParent = async (data) => {
+	// 	return this.parentService.login(data);
+	// };
+
+	// registerStudent = async (data) => {
+	// 	return this.studentService.register(data);
+	// };
+
+	// loginStudent = async (data) => {
+	// 	return this.studentService.login(data);
+	// };
 
 	verifyEmail = async (data, otpCode) => {
 		const {

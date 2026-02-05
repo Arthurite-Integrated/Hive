@@ -19,8 +19,8 @@ export class AuthController {
 		this.authService = AuthService.getInstance();
 	}
 
-	registerInstructor = async (req, res) => {
-		const data = await this.authService.registerInstructor({
+	register = async (req, res) => {
+		const data = await this.authService.register({
 			...req.body,
 			...req.clientMetadata,
 		});
@@ -34,60 +34,8 @@ export class AuthController {
 		);
 	};
 
-	loginInstructor = async (req, res) => {
-		const data = await this.authService.loginInstructor({
-			...req.body,
-			...req.clientMetadata,
-		});
-		return sendSuccessResponse(res, {
-			message: data.message,
-			data: _.omit(data, ["message"]),
-		});
-	};
-
-	registerParent = async (req, res) => {
-		const data = await this.authService.registerParent({
-			...req.body,
-			...req.clientMetadata,
-		});
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Please check your email for otp code to verify your email",
-				data,
-			},
-			StatusCodes.CREATED,
-		);
-	};
-
-	loginParent = async (req, res) => {
-		const data = await this.authService.loginParent({
-			...req.body,
-			...req.clientMetadata,
-		});
-		return sendSuccessResponse(res, {
-			message: data.message,
-			data: _.omit(data, ["message"]),
-		});
-	};
-
-	registerStudent = async (req, res) => {
-		const data = await this.authService.registerStudent({
-			...req.body,
-			...req.clientMetadata,
-		});
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Please check your email for otp code to verify your email",
-				data,
-			},
-			StatusCodes.CREATED,
-		);
-	};
-
-	loginStudent = async (req, res) => {
-		const data = await this.authService.loginStudent({
+	login = async (req, res) => {
+		const data = await this.authService.login({
 			...req.body,
 			...req.clientMetadata,
 		});
