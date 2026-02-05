@@ -1,8 +1,6 @@
 import Router from "express";
-import { instructorRouter } from "#modules/instructor/routes/instructor.routes";
-import { parentRouter } from "#modules/parent/routes/parent.routes";
-import { studentRouter } from "#modules/student/routes/student.routes";
 import { JwtService } from "#services/jwt.service";
+import { loginSchema, signupSchema } from "#validator/auth/index";
 import { ZodEngine } from "#validator/engine/zod.engine";
 import { verifyOTPSchema } from "#validator/verification.schema";
 import { AuthController } from "../controllers/auth.controller.js";
@@ -14,9 +12,16 @@ const authController = AuthController.getInstance();
 const zodEngine = ZodEngine.getInstance();
 const jwtService = JwtService.getInstance();
 
-authRouter.use("/instructor", instructorRouter);
-authRouter.use("/parent", parentRouter);
-authRouter.use("/student", studentRouter);
+authRouter.post(
+	"/register",
+	zodEngine.validate.body(signupSchema),
+	authController.register,
+);
+authRouter.post(
+	"/login",
+	zodEngine.validate.body(loginSchema),
+	authController.login,
+);
 
 /** @info - OAuth */
 authRouter.use("/google", googleRouter);
