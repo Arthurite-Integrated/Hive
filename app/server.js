@@ -13,6 +13,7 @@ import { appRouter } from "#routes/router";
 import { EmailQueueService } from "#services/queues/email.queue.service";
 import { EmailWorkerService } from "#services/workers/email.worker.service";
 import { logger } from "#utils/logger";
+import cors from "cors"
 
 let PORT = config.server.port;
 const app = express();
@@ -27,6 +28,13 @@ API Docs: http://${config.server.hostname}:${port}/docs
 `;
 
 app.use(express.json());
+
+/** @info - Cors configuration */
+app.use(cors({
+	origin: ["http://localhost:3000", "http://localhost:5173"],
+	methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+	allowedHeaders: "*",
+}))
 
 // Attempt MongoDB/Redis connection (non-blocking)
 mongoConnection(startServer);
