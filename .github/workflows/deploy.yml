@@ -20,8 +20,8 @@ jobs:
       - name: Install yarn
         run: npm install -g yarn
 
-      # - name: Install dependencies
-      #   run: yarn install --frozen-lockfile
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts
 
       # - name: Build project
       #   run: yarn build
@@ -42,4 +42,4 @@ jobs:
 
       - name: Restart the server
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "source ~/.nvm/nvm.sh && cd ~/hive && yarn install --frozen-lockfile && yarn start:prod"
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "source ~/.nvm/nvm.sh && cd ~/hive && yarn start:prod"
