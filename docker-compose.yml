@@ -1,0 +1,75 @@
+version: '3'
+services:
+  hive:
+    build: .
+    container_name: hive
+    ports:
+      - "4000:3000"
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    networks:
+      - hive_network
+    env_file:
+      - ./.env.development
+    environment:
+      NODE_ENV: production
+      MONGO_URI: mongodb://root:spectra@mongodb:27017
+      REDIS_URI: redis://redis:6379
+    depends_on:
+      - mongodb
+      - redis
+
+  node:
+    image: node:25-alpine
+    restart: always
+    command: sleep infinity
+    networks:
+      - hive_network
+
+  mongodb:
+    image: mongodb/mongodb-community-server:8.0-ubi8
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: spectra
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_volume:/data/db
+    networks:
+      - hive_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8.4-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --save 60 1
+      --save 300 10
+      --save 900 10000
+      --appendonly no
+    networks:
+      - hive_network
+    volumes:
+      - redis_volume:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  mongodb_volume:
+  redis_volume:
+
+networks:
+  hive_network:
+    driver: bridge
