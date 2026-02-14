@@ -3,6 +3,7 @@ services:
   hive:
     build: .
     container_name: hive
+    restart: unless-stopped
     ports:
       - "4000:3000"
     volumes:

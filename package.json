@@ -5,8 +5,8 @@
 	"main": "index.js",
 	"scripts": {
 		"start:dev": "nodemon app/server.js",
-		"start:prod": "pm2-runtime ecosystem.config.cjs --env production",
-		"stop:prod": "pm2-runtime delete ecosystem.config.cjs",
+		"start:prod": "pm2 delete ecosystem.config.cjs && pm2 start ecosystem.config.cjs --env production",
+		"stop:prod": "pm2 delete ecosystem.config.cjs",
 		"test:prod": "node dist/server.cjs",
 		"build": "node build.js",
 		"biome:fix": "biome check --write",
