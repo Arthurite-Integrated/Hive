@@ -5,13 +5,12 @@
 	"main": "index.js",
 	"scripts": {
 		"start:dev": "nodemon app/server.js",
-		"start:prod": "pm2 delete ecosystem.config.cjs && pm2 start ecosystem.config.cjs --env production",
-		"stop:prod": "pm2 delete ecosystem.config.cjs",
+		"start:prod": "pm2-runtime ecosystem.config.cjs --env production",
+		"stop:prod": "pm2-runtime delete ecosystem.config.cjs",
 		"test:prod": "node dist/server.cjs",
 		"build": "node build.js",
 		"biome:fix": "biome check --write",
-
-		"prepare": "lefthook install"
+		"prepare": "husky"
 	},
 	"repository": "git+https://github.com/Arthurite-Integrated/Hive.git",
 	"keywords": [],
@@ -59,7 +58,14 @@
 		"@biomejs/biome": "2.3.11",
 		"copyfiles": "^2.4.1",
 		"esbuild": "^0.27.2",
-		"lefthook": "^2.0.13",
+		"husky": "^9.1.7",
+		"lint-staged": "^16.2.7",
 		"nodemon": "^3.1.11"
+	},
+	"lint-staged": {
+		"*.{js,ts,jsx,tsx,json,jsonc}": [
+			"biome check --write --unsafe",
+			"biome check"
+		]
 	}
 }
