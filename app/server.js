@@ -30,32 +30,34 @@ API Docs: http://${config.server.hostname}:${port}/docs
 app.use(express.json());
 
 /** @info - Cors configuration */
-app.use(
-	cors({
-		origin: (origin, callback) => {
-			// Allow requests with no origin (mobile apps, Postman, etc.)
-			if (!origin) return callback(null, true);
+// app.use(
+// 	cors({
+// 		origin: (origin, callback) => {
+// 			// Allow requests with no origin (mobile apps, Postman, etc.)
+// 			if (!origin) return callback(null, true);
 
-			// Define allowed patterns
-			const allowedPatterns = [
-				/^https:\/\/[a-zA-Z0-9-]+\.d9kpauooevxh8\.amplifyapp\.com$/, // Your Amplify domain
-				/^http:\/\/localhost:\d+$/, // Local development
-			];
+// 			// Define allowed patterns
+// 			const allowedPatterns = [
+// 				/^https:\/\/[a-zA-Z0-9-]+\.d9kpauooevxh8\.amplifyapp\.com$/, // Your Amplify domain
+// 				/^http:\/\/localhost:\d+$/, // Local development
+// 			];
 
-			// Check if origin matches any pattern
-			const isAllowed = allowedPatterns.some((pattern) => pattern.test(origin));
+// 			// Check if origin matches any pattern
+// 			const isAllowed = allowedPatterns.some((pattern) => pattern.test(origin));
 
-			if (isAllowed) {
-				callback(null, true);
-			} else {
-				console.log("❌ Blocked origin:", origin);
-				callback(new Error("Not allowed by CORS"));
-			}
-		},
-		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-		allowedHeaders: "*",
-	}),
-);
+// 			if (isAllowed) {
+// 				callback(null, true);
+// 			} else {
+// 				console.log("❌ Blocked origin:", origin);
+// 				callback(new Error("Not allowed by CORS"));
+// 			}
+// 		},
+// 		methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+// 		allowedHeaders: "*",
+// 	}),
+// );
+/** @info - Minimal cors config */
+app.use(cors({ origin: "*" }));
 
 // Attempt MongoDB/Redis connection (non-blocking)
 mongoConnection(startServer);
