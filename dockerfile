@@ -4,7 +4,9 @@ WORKDIR /app
 
 COPY package.json *lock* ./
 
-RUN npm install -g pm2-runtime yarn
+RUN npm install -g pm2-runtime
+
+RUN yarn --version
 
 RUN yarn install --frozen-lockfile --ignore-scripts && yarn cache clean
 
