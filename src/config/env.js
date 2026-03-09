@@ -15,20 +15,8 @@ const EnvSchema = z.object({
 	SERVER_DOMAIN: z.string(),
 	ROOT_DOMAIN: z.string(),
 
-	/** @info - Email Credentials */
-	GMAIL_HOST: z.string(),
-	GMAIL_PORT_SSL: z.coerce.number(),
-	GMAIL_PORT_TLS: z.coerce.number(),
-	GMAIL_USER: z.string(),
-	GMAIL_PASSWORD: z.string(),
-	GMAIL_SECURE: z.boolean().default(true),
-
-	HOSTINGER_HOST: z.string(),
-	HOSTINGER_PORT_SSL: z.coerce.number(),
-	HOSTINGER_PORT_TLS: z.coerce.number(),
-	HOSTINGER_USER: z.string(),
-	HOSTINGER_PASSWORD: z.string(),
-	HOSTINGER_SECURE: z.boolean().default(true),
+	RESEND_API_KEY: z.string(),
+	RESEND_EMAIL: z.string(),
 
 	ENCRYPTION_KEY: z.string(),
 

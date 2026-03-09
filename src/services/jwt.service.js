@@ -68,7 +68,7 @@ export class JwtService {
 			) {
 				throwUnauthorizedError("Something went wrong,");
 			}
-
+			console.log("Auth Data: ", data);
 			req.authData = data;
 			next();
 		} catch (e) {

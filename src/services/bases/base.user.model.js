@@ -1,15 +1,12 @@
-import { compare, genSalt, hash } from "bcryptjs";
-import { model, Schema } from "mongoose";
 import { BYTE_LENGTH } from "#constants/auth/password-hash";
 import { emailRegex, phoneNumberRegex } from "#constants/regex.constant";
 import { AuthMethods } from "#enums/auth/index";
 import { ModelCollections } from "#enums/models/index";
-import { LINK_STATUS } from "#enums/parent/index";
 import { UserTypes } from "#enums/user.enums";
+import { compare, genSalt, hash } from "bcryptjs";
+import { Schema } from "mongoose";
 
-const collectionName = ModelCollections.PARENT;
-
-const ParentSchema = new Schema(
+export const BaseUserSchema = new Schema(
 	{
 		firstName: {
 			type: String,
@@ -58,8 +55,10 @@ const ParentSchema = new Schema(
 		},
 		userType: {
 			type: String,
-			enum: Object.values(UserTypes),
-			default: UserTypes.PARENT,
+			enum: {
+				values: Object.values(UserTypes),
+				message: "Invalid user type: {{VALUE}}",
+			},
 		},
 		isSuperAdmin: {
 			type: Boolean,
@@ -86,6 +85,8 @@ const ParentSchema = new Schema(
 			type: Boolean,
 			default: false,
 		},
+
+		/** @info - Onboarding */
 		onboarded: {
 			type: Boolean,
 			default: false,
@@ -97,7 +98,35 @@ const ParentSchema = new Schema(
 			enum: Object.values(AuthMethods),
 			default: AuthMethods.EMAIL,
 		},
-
+		google: {
+			type: {
+				accessToken: {
+					type: String,
+					required: [true, "Access token is required"],
+				},
+				refreshToken: {
+					type: String,
+					required: [true, "Refresh token is required"],
+				},
+				expiryDate: {
+					type: Date,
+					required: [true, "Expiry date is required"],
+				},
+				scope: {
+					type: String,
+					required: [true, "Scope is required"],
+				},
+				tokenType: {
+					type: String,
+					required: [true, "Token type is required"],
+				},
+				idToken: {
+					type: String,
+					required: [true, "ID token is required"],
+				},
+			},
+			required: false,
+		},
 		facebook: {
 			type: {
 				accessToken: {
@@ -115,41 +144,25 @@ const ParentSchema = new Schema(
 			},
 			required: [
 				function () {
-					return this.authMethod === "facebook";
+					return this.authMethod === AuthMethods.FACEBOOK;
 				},
 				"Facebook credentials are required.",
 			],
 		},
-
-		/* Linked students settings */
-		linkedStudents: [
-			{
-				studentId: {
-					type: Schema.Types.ObjectId,
-					ref: ModelCollections.STUDENT,
-					required: true,
-				},
-				status: {
+		apple: {
+			type: {
+				accessToken: {
 					type: String,
-					enum: {
-						values: Object.values(LINK_STATUS),
-						message: "Invalid link status: {{VALUE}}",
-					},
-					default: LINK_STATUS.PENDING,
-					required: [true, "Link status is required"],
-				},
-				linkedAt: {
-					type: Date,
-					default: Date.now,
-				},
-				approvedAt: {
-					type: Date,
-					required: false,
+					required: [true, "Access token is required"],
 				},
 			},
-		],
-
-		/* Settings */
+			required: [
+				function () {
+					return this.authMethod === AuthMethods.APPLE;
+				},
+				"Apple credentials are required.",
+			],
+		},
 	},
 	{
 		timestamps: true,
@@ -158,7 +171,7 @@ const ParentSchema = new Schema(
 	},
 );
 
-ParentSchema.methods.setPassword = async function (password) {
+BaseUserSchema.methods.setPassword = async function (password) {
 	const salt = await genSalt(BYTE_LENGTH);
 	this.salt = salt;
 	this.hash = await hash(password, salt);
@@ -166,9 +179,7 @@ ParentSchema.methods.setPassword = async function (password) {
 	return this;
 };
 
-ParentSchema.methods.validatePassword = async function (password) {
+BaseUserSchema.methods.validatePassword = async function (password) {
 	if (!this.salt || !this.hash) return false;
 	return compare(password, this.hash);
 };
-
-export const Parent = model(collectionName, ParentSchema);

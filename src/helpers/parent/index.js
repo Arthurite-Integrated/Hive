@@ -1,5 +1,5 @@
 import { throwNotFoundError } from "#helpers/errors/throw-error";
-import { Parent } from "#models/parent.model";
+import { Parent } from "#modules/parent/parent.model";
 
 const parentModel = Parent;
 

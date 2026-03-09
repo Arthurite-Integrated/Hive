@@ -6,12 +6,12 @@ import { UserTypes } from "#enums/user.enums";
 import { generateAuthenticatedData, generateAuthId } from "#helpers/auth/index";
 import { throwBadRequestError } from "#helpers/errors/throw-error";
 import { decodeBase64, generateBase64 } from "#helpers/index";
-import { Instructor } from "#models/instructor.model";
-import { Parent } from "#models/parent.model";
-import { Student } from "#models/student.model";
 import { BaseOAuthService } from "#services/bases/base.oauth.service";
 import { CacheService } from "#services/cache.service";
 import { JwtService } from "#services/jwt.service";
+import { Instructor } from "#modules/instructor/instructor.model";
+import { Parent } from "#modules/parent/parent.model";
+import { Student } from "#modules/student/student.model";
 
 export class GoogleOAuthService extends BaseOAuthService {
 	static instance = null;

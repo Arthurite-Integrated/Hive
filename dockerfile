@@ -12,6 +12,6 @@ RUN yarn install --frozen-lockfile --ignore-scripts && yarn cache clean
 
 COPY . .
 
-EXPOSE 3000
+EXPOSE 5000
 
 CMD ["pm2-runtime", "ecosystem.config.cjs", "--env", "production"]

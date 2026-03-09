@@ -7,15 +7,12 @@ export const config = {
 		expiresIn: env.JWT_EXPIRES_IN,
 		issuer: env.JWT_ISSUER || "Hive",
 	},
-
 	db: {
 		uri: env.MONGO_URI,
 	},
-
 	redis: {
 		uri: env.REDIS_URI,
 	},
-
 	server: {
 		hostname: env.HOSTNAME,
 		port: env.PORT,
@@ -51,16 +48,17 @@ export const config = {
 		clientSecret: env.GOOGLE_CLIENT_SECRET,
 		redirectUri: env.GOOGLE_REDIRECT_URI,
 	},
-
 	facebook: {
 		clientId: env.FACEBOOK_CLIENT_ID,
 		clientSecret: env.FACEBOOK_CLIENT_SECRET,
 		redirectUri: env.FACEBOOK_REDIRECT_URI,
 	},
-
 	encryption: {
 		key: env.ENCRYPTION_KEY,
 	},
-
+	resend: {
+		apiKey: env.RESEND_API_KEY,
+		email: env.RESEND_EMAIL,
+	},
 	env: env.NODE_ENV,
 };

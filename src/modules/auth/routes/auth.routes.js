@@ -6,11 +6,14 @@ import { verifyOTPSchema } from "#validator/verification.schema";
 import { AuthController } from "../controllers/auth.controller.js";
 import { facebookRouter } from "./oauth/facebook.routes.js";
 import { googleRouter } from "./oauth/google.routes.js";
+import { extractMetadata } from "#middlewares/extract-metadata";
 
 export const authRouter = Router();
-const authController = AuthController.getInstance();
 const zodEngine = ZodEngine.getInstance();
 const jwtService = JwtService.getInstance();
+const authController = AuthController.getInstance();
+
+authRouter.use(extractMetadata);
 
 authRouter.post(
 	"/register",
