@@ -9,3 +9,16 @@ export const COMMUNITY_VISIBILITY = {
 	PRIVATE: "private",
 	ARCHIVED: "archived",
 };
+
+export const COMMUNITY_MEMBERSHIP_STATUS = {
+	PENDING: "pending",
+	ACTIVE: "active",
+	BLOCKED: "blocked",
+};
+
+export const COMMUNITY_MEMBER_ROLE = {
+	OWNER: "owner",
+	ADMIN: "admin",
+	MEMBER: "member",
+	GUEST: "guest",
+};
