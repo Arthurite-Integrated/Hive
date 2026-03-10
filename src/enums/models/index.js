@@ -3,8 +3,6 @@ export const ModelCollections = {
 	INSTRUCTOR: "instructor",
 	STUDENT: "student",
 	PARENT: "parent",
-	COURSE: "course",
-	LESSON: "lesson",
 	CHAPTER: "chapter",
 	SECTION: "section",
 	QUESTION: "question",
@@ -17,4 +15,24 @@ export const ModelCollections = {
 	LOCATION: "location",
 
 	PARENT_STUDENT_LINK: "parent_student_link",
+
+	COMMUNITY: "community",
+	COMMUNITY_MEMBER: "community_member",
+	COMMUNITY_POST: "community_post",
+	COURSE: "course",
+	MODULE: "module",
+	LESSON: "lesson",
+
+	ASSIGNMENT: "assignment",
+	ASSIGNMENT_SUBMISSION: "assignment_submission",
+	QUIZ: "quiz",
+	QUIZ_ATTEMPT: "quiz_attempt",
+
+	ENROLLMENT: "enrollment",
+	CERTIFICATE: "certificate",
+	SUBSCRIPTION: "subscription",
+	PAYMENT: "payment",
+	WITHDRAWAL: "withdrawal",
+	TEACHER_BALANCE: "teacher_balance",
+	REFERRAL: "referral",
 };

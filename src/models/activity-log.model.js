@@ -46,6 +46,8 @@ const ActivityLogSchema = new Schema(
 			type: Schema.Types.Mixed,
 			required: false,
 		},
+		ipAddress: String,
+		userAgent: String,
 	},
 	{
 		timestamps: true,
@@ -53,5 +55,12 @@ const ActivityLogSchema = new Schema(
 		virtuals: true,
 	},
 );
+
+// Per-user activity lookup
+ActivityLogSchema.index({ userId: 1, createdAt: -1 });
+// Filter by action type
+ActivityLogSchema.index({ activity: 1, createdAt: -1 });
+// TTL: auto-delete after 90 days
+ActivityLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 7776000 });
 
 export const ActivityLog = model(collectionName, ActivityLogSchema);

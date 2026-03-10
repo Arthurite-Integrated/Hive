@@ -9,3 +9,10 @@ export const getParentByEmail = async (email) => {
 		throwNotFoundError("Parent account does not exist")
 	);
 };
+
+export const getParentById = async (id) => {
+	return (
+		(await parentModel.findById(id)) ??
+		throwNotFoundError("Parent account does not exist")
+	);
+};
