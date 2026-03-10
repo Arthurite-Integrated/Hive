@@ -1,58 +1,46 @@
-import { model, Schema } from "mongoose";
+import { config } from "#config/config";
 import { COMMUNITY_STATUS, COMMUNITY_VISIBILITY } from "#enums/community/index";
+import { ModelCollections } from "#enums/models/index";
+import { randomBytes } from "crypto";
+import { Schema, model } from "monggose";
 
 const collectionName = ModelCollections.COMMUNITY;
 
 const CommunitySchema = new Schema(
 	{
-		name: {
-			type: String,
-			required: [true, "Name is required"],
-		},
-		description: {
-			type: String,
-			required: false,
-		},
-		slug: {
-			type: String,
-			required: [true, "Slug is required"],
-			unique: [true, "Slug must be unique"],
-		},
-		image: {
-			type: String,
-			required: false,
-		},
-		coverImage: {
-			type: String,
-			required: false,
-		},
 		ownerId: {
 			type: Schema.Types.ObjectId,
 			ref: ModelCollections.INSTRUCTOR,
-			required: [true, "Owner ID is required"],
+			required: true,
 		},
-		category: {
+		name: {
 			type: String,
-			required: [true, "Category is required"],
+			required: true,
 		},
+		slug: {
+			type: String,
+			required: true,
+			unique: true,
+		},
+		description: String,
+		coverImage: String,
+		category: String,
 		status: {
 			type: String,
 			enum: {
 				values: Object.values(COMMUNITY_STATUS),
-				message: "Invalid status: {{VALUE}}",
+				message: "Invalid community status: {{VALUE}}",
 			},
-			default: COMMUNITY_STATUS.ACTIVE,
+			default: "active",
 		},
 		visibility: {
 			type: String,
 			enum: {
 				values: Object.values(COMMUNITY_VISIBILITY),
-				message: "Invalid visibility: {{VALUE}}",
+				message: "Invalid community visibility: {{VALUE}}",
 			},
-			default: COMMUNITY_VISIBILITY.PUBLIC,
+			default: "public",
 		},
-
-		// Settings
 		requireApproval: {
 			type: Boolean,
 			default: false,
@@ -61,9 +49,20 @@ const CommunitySchema = new Schema(
 			type: Boolean,
 			default: true,
 		},
-
-		/**
-		 * @info - Denormalized stats @todo - Might remove this later if we have a better way to get these stats */
+		paymentRequired: {
+			type: Boolean,
+			default: false,
+		},
+		monthlyPrice: {
+			type: Number,
+			default: 0,
+		},
+		settings: {
+			sequentialCourses: Boolean,
+			allowDownloads: Boolean,
+			maxConcurrentDevices: Number,
+			gracePeriodDays: Number,
+		},
 		memberCount: {
 			type: Number,
 			default: 0,
@@ -75,9 +74,37 @@ const CommunitySchema = new Schema(
 	},
 	{
 		timestamps: true,
-		versionKey: false,
-		virtuals: true,
+		toJSON: { virtuals: true },
+		toObject: { virtuals: true },
 	},
 );
+
+CommunitySchema.index({ slug: 1 });
+
+CommunitySchema.virtual("url").get(function () {
+	return `${config.server.rootDomain}/communities/${this.slug}`;
+});
+
+CommunitySchema.pre("validate", async function () {
+	if (!this.isNew && !this.isModified("name")) return;
+
+	const slugBase = this.name
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.substring(0, 50);
+
+	const exists = await this.constructor.findOne({
+		slug: slugBase,
+		_id: { $ne: this._id },
+	});
+
+	if (!exists) {
+		this.slug = slugBase;
+	} else {
+		const suffix = randomBytes(3).toString("hex");
+		this.slug = `${slugBase}-${suffix}`;
+	}
+});
 
 export const Community = model(collectionName, CommunitySchema);
