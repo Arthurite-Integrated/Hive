@@ -3,7 +3,11 @@ import { config } from "#config/config";
 import { TTL } from "#constants/ttl.constant";
 import { AuthMethods, GoogleOAuthAction } from "#enums/auth/index";
 import { UserTypes } from "#enums/user.enums";
-import { generateAuthenticatedData, generateAuthId } from "#helpers/auth/index";
+import {
+	generateAuthenticatedData,
+	generateAuthId,
+	generateAuthTokens,
+} from "#helpers/auth/index";
 import { throwBadRequestError } from "#helpers/errors/throw-error";
 import { decodeBase64, generateBase64 } from "#helpers/index";
 import { BaseOAuthService } from "#services/bases/base.oauth.service";
@@ -12,6 +16,7 @@ import { JwtService } from "#services/jwt.service";
 import { Instructor } from "#modules/instructor/instructor.model";
 import { Parent } from "#modules/parent/parent.model";
 import { Student } from "#modules/student/student.model";
+import { oauthResponsePage } from "#helpers/auth/oauth.helper";
 
 export class GoogleOAuthService extends BaseOAuthService {
 	static instance = null;
@@ -106,19 +111,36 @@ export class GoogleOAuthService extends BaseOAuthService {
 			throwBadRequestError("Invalid user type.");
 
 		const authId = generateAuthId();
-		const token = this.jwtService.generateToken(authId);
 
-		const { tokens } = await this.googleSignupAuth.getToken(code);
-		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
+		let userInfo;
+		let tokens;
+		try {
+			const result = await this.googleSignupAuth.getToken(code);
+			tokens = result.tokens;
+			userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
+			console.log(userInfo);
+		} catch (e) {
+			console.log(e);
+			return oauthResponsePage({
+				title: "OAuth Authentication Error",
+				message: "Failed to authenticate with Google. Please try again.",
+				status: "error",
+				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
+			});
+		}
 
 		let user;
 		switch (userType) {
 			case UserTypes.INSTRUCTOR:
 				user = await this.instructorModel.findOne({ email: userInfo.email });
 				if (user)
-					throwBadRequestError(
-						"Instructor already exists. Please proceed to login.",
-					);
+					return oauthResponsePage({
+						title: "Account Already Exists",
+						message:
+							"An instructor account with this email already exists. Please proceed to login.",
+						status: "error",
+						payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+					});
 
 				user = await this.instructorModel.create({
 					firstName: userInfo.given_name,
@@ -131,9 +153,13 @@ export class GoogleOAuthService extends BaseOAuthService {
 			case UserTypes.PARENT:
 				user = await this.parentModel.findOne({ email: userInfo.email });
 				if (user)
-					throwBadRequestError(
-						"Parent already exists. Please proceed to login.",
-					);
+					return oauthResponsePage({
+						title: "Account Already Exists",
+						message:
+							"A parent account with this email already exists. Please proceed to login.",
+						status: "error",
+						payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+					});
 
 				user = await this.parentModel.create({
 					firstName: userInfo.given_name,
@@ -146,9 +172,13 @@ export class GoogleOAuthService extends BaseOAuthService {
 			case UserTypes.STUDENT:
 				user = await this.studentModel.findOne({ email: userInfo.email });
 				if (user)
-					throwBadRequestError(
-						"Student already exists. Please proceed to login.",
-					);
+					return oauthResponsePage({
+						title: "Account Already Exists",
+						message:
+							"A student account with this email already exists. Please proceed to login.",
+						status: "error",
+						payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+					});
 
 				user = await this.studentModel.create({
 					firstName: userInfo.given_name,
@@ -162,7 +192,7 @@ export class GoogleOAuthService extends BaseOAuthService {
 				throwBadRequestError("Invalid user type.");
 		}
 
-		console.log(tokens);
+		// console.log(tokens);
 
 		user.google = {
 			accessToken: tokens.access_token,
@@ -187,8 +217,19 @@ export class GoogleOAuthService extends BaseOAuthService {
 		user = generateAuthenticatedData(user);
 
 		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
+		const gen_tokens = await generateAuthTokens(authId);
 
-		return { user, token };
+		return oauthResponsePage({
+			title: "Welcome to Hive 😊",
+			message: `Signed in as ${user.email}`,
+			status: "success",
+			autoClose: true,
+			payload: {
+				type: "oauth_success",
+				user,
+				...gen_tokens,
+			},
+		});
 	};
 
 	login = async (code, state) => {
@@ -196,12 +237,19 @@ export class GoogleOAuthService extends BaseOAuthService {
 		if (!Object.values(UserTypes).includes(userType))
 			throwBadRequestError("Invalid user type.");
 
-		const { tokens } = await this.googleLoginAuth.getToken(code);
-		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
-		console.log(userInfo);
-
-		const authId = generateAuthId();
-		const token = this.jwtService.generateToken(authId);
+		let userInfo;
+		try {
+			const { tokens } = await this.googleLoginAuth.getToken(code);
+			userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
+			console.log(userInfo);
+		} catch {
+			return oauthResponsePage({
+				title: "OAuth Authentication Error",
+				message: "Failed to authenticate with Google. Please try again.",
+				status: "error",
+				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
+			});
+		}
 
 		let user;
 		switch (userType) {
@@ -209,9 +257,13 @@ export class GoogleOAuthService extends BaseOAuthService {
 				user = await this.instructorModel.findOne({ email: userInfo.email });
 				if (!user) throwBadRequestError("Instructor not found.");
 				if (user.authMethod !== AuthMethods.GOOGLE)
-					throwBadRequestError(
-						"Instructor is not linked with Google. Login with email credentials",
-					);
+					return oauthResponsePage({
+						title: "OAuth Account exist error",
+						message:
+							"Instructor is not linked with Google. Login with email credentials",
+						status: "error",
+						payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+					});
 
 				user.google.accessToken = tokens.access_token;
 				user.google.refreshToken = tokens.refresh_token;
@@ -225,9 +277,13 @@ export class GoogleOAuthService extends BaseOAuthService {
 				user = await this.parentModel.findOne({ email: userInfo.email });
 				if (!user) throwBadRequestError("Parent not found.");
 				if (user.authMethod !== AuthMethods.GOOGLE)
-					throwBadRequestError(
-						"Parent is not linked with Google. Login with email credentials",
-					);
+					return oauthResponsePage({
+						title: "OAuth Account exist error",
+						message:
+							"Parent is not linked with Google. Login with email credentials",
+						status: "error",
+						payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+					});
 
 				user.google.accessToken = tokens.access_token;
 				user.google.refreshToken = tokens.refresh_token;
@@ -241,9 +297,13 @@ export class GoogleOAuthService extends BaseOAuthService {
 				user = await this.studentModel.findOne({ email: userInfo.email });
 				if (!user) throwBadRequestError("Student not found.");
 				if (user.authMethod !== AuthMethods.GOOGLE)
-					throwBadRequestError(
-						"Student is not linked with Google. Login with email credentials",
-					);
+					return oauthResponsePage({
+						title: "OAuth Account exist error",
+						message:
+							"Student is not linked with Google. Login with email credentials",
+						status: "error",
+						payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+					});
 
 				user.google.accessToken = tokens.access_token;
 				user.google.refreshToken = tokens.refresh_token;
@@ -267,8 +327,21 @@ export class GoogleOAuthService extends BaseOAuthService {
 
 		user = generateAuthenticatedData(user);
 
+		const authId = generateAuthId(user._id);
+		const gen_tokens = await generateAuthTokens(authId);
+
 		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
 
-		return { user, token };
+		return oauthResponsePage({
+			title: "Welcome Back",
+			message: `Signed in as ${user.email}`,
+			status: "success",
+			autoClose: true,
+			payload: {
+				type: "oauth_success",
+				user,
+				...gen_tokens,
+			},
+		});
 	};
 }

@@ -1,7 +1,10 @@
 import { JwtAction } from "#enums/auth/index";
 import { EmailJobNames } from "#enums/queue/index";
 import { UserTypes } from "#enums/user.enums";
-import { generateAuthenticatedData } from "#helpers/auth/index";
+import {
+	generateAuthenticatedData,
+	generateAuthTokens,
+} from "#helpers/auth/index";
 import {
 	throwBadRequestError,
 	throwUnauthorizedError,
@@ -80,44 +83,25 @@ export class AuthService {
 		}
 	};
 
-	// registerInstructor = async (data) => {
-	// 	return this.instructorService.register(data);
-	// };
+	refresh = async (refreshToken) => {
+		const { authId, refreshId } = this.jwtService.verifyToken(refreshToken);
+		if (!refreshId) throwUnauthorizedError("Invalid refresh token.");
 
-	// loginInstructor = async (data) => {
-	// 	return this.instructorService.login(data);
-	// };
+		if (!(await this.cacheService.redis.exists(refreshId)))
+			throwBadRequestError("Refresh token expired.");
+		console.log("Auth ID from refresh token:", refreshId);
+		await this.cacheService.delete(refreshId);
 
-	// registerParent = async (data) => {
-	// 	return this.parentService.register(data);
-	// };
-
-	// loginParent = async (data) => {
-	// 	return this.parentService.login(data);
-	// };
-
-	// registerStudent = async (data) => {
-	// 	return this.studentService.register(data);
-	// };
-
-	// loginStudent = async (data) => {
-	// 	return this.studentService.login(data);
-	// };
+		const token = await generateAuthTokens(authId);
+		return token;
+	};
 
 	verifyEmail = async (data, otpCode) => {
-		const {
-			authId,
-			userType,
-			otpId,
-			firstName,
-			lastName,
-			email,
-			action,
-			...rest
-		} = data;
+		const { authId, userType, otpId, action, ...rest } = data;
 
 		const otp = await this.cacheService.get(otpId);
 
+		if (!action) throwBadRequestError("Invalid request action.");
 		if (!otp) throwBadRequestError("Invalid or expired verification link.");
 
 		if (this.encryptionService.decrypt(otp.otp) !== otpCode)
@@ -125,78 +109,72 @@ export class AuthService {
 
 		let user;
 
-		if (action) {
-			if (action === JwtAction.VERIFY_EMAIL) {
-				switch (userType) {
-					case UserTypes.INSTRUCTOR: {
-						const instructor = await this.instructorModel.create({
-							firstName,
-							lastName,
-							email,
-						});
+		if (action === JwtAction.VERIFY_EMAIL) {
+			const { firstName, lastName, email, password } = rest;
+			switch (userType) {
+				case UserTypes.INSTRUCTOR: {
+					const instructor = await this.instructorModel.create({
+						firstName,
+						lastName,
+						email,
+					});
 
-						console.log(this.encryptionService.decrypt(rest.password));
-						await instructor.setPassword(
-							this.encryptionService.decrypt(rest.password),
-						);
-						user = instructor;
-						break;
-					}
-					case UserTypes.PARENT: {
-						const parent = await this.parentModel.create({
-							firstName,
-							lastName,
-							email,
-						});
-
-						console.log(this.encryptionService.decrypt(rest.password));
-						await parent.setPassword(
-							this.encryptionService.decrypt(rest.password),
-						);
-						user = parent;
-						break;
-					}
-					case UserTypes.STUDENT: {
-						const student = await this.studentModel.create({
-							firstName,
-							lastName,
-							email,
-						});
-
-						console.log(this.encryptionService.decrypt(rest.password));
-						await student.setPassword(
-							this.encryptionService.decrypt(rest.password),
-						);
-						user = student;
-						break;
-					}
-					default:
-						throwUnauthorizedError("Invalid user type.");
+					console.log(this.encryptionService.decrypt(password));
+					await instructor.setPassword(
+						this.encryptionService.decrypt(password),
+					);
+					user = instructor;
+					break;
 				}
+				case UserTypes.PARENT: {
+					const parent = await this.parentModel.create({
+						firstName,
+						lastName,
+						email,
+					});
 
-				user.emailVerified = true;
-				user.emailVerifiedAt = new Date();
-				user.lastLoginAt = new Date();
-			} else if (action === JwtAction.AUTHENTICATE) {
-				switch (userType) {
-					case UserTypes.INSTRUCTOR:
-						user = await getInstructorByEmail(email);
-						user.lastLoginAt = new Date();
-						break;
-					case UserTypes.PARENT:
-						user = await getParentByEmail(email);
-						user.lastLoginAt = new Date();
-						break;
-					case UserTypes.STUDENT:
-						user = await getStudentByEmail(email);
-						user.lastLoginAt = new Date();
-						break;
-					default:
-						throwUnauthorizedError("Invalid user type.");
+					console.log(this.encryptionService.decrypt(password));
+					await parent.setPassword(this.encryptionService.decrypt(password));
+					user = parent;
+					break;
 				}
+				case UserTypes.STUDENT: {
+					const student = await this.studentModel.create({
+						firstName,
+						lastName,
+						email,
+					});
+
+					console.log(this.encryptionService.decrypt(password));
+					await student.setPassword(this.encryptionService.decrypt(password));
+					user = student;
+					break;
+				}
+				default:
+					throwUnauthorizedError("Invalid user type.");
 			}
-		} else {
-			throwUnauthorizedError("No action found.");
+
+			user.emailVerified = true;
+			user.emailVerifiedAt = new Date();
+			user.lastLoginAt = new Date();
+		} else if (action === JwtAction.AUTHENTICATE) {
+			const { email } = rest;
+			switch (userType) {
+				case UserTypes.INSTRUCTOR:
+					user = await getInstructorByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				case UserTypes.PARENT:
+					user = await getParentByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				case UserTypes.STUDENT:
+					user = await getStudentByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				default:
+					throwUnauthorizedError("Invalid user type.");
+			}
 		}
 
 		const savedData = await user.save();

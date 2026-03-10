@@ -2,17 +2,27 @@ import axios from "axios";
 import { webcrypto } from "crypto";
 import _ from "lodash";
 import { v4 } from "uuid";
+import { JwtService } from "#services/jwt.service";
+import { TTL } from "#constants/ttl.constant";
+import { CacheService } from "#services/cache.service";
+
+const jwtService = JwtService.getInstance();
+const cacheService = CacheService.getInstance();
 
 export const generateOTP = () => {
 	return webcrypto.getRandomValues(new Uint32Array(1)).toString().slice(0, 6);
 };
 
-export const generateAuthId = () => {
-	return `auth:${v4()}-${Date.now()}`;
+export const generateAuthId = (userId = null) => {
+	return `auth:${userId || v4()}-${Date.now()}`;
 };
 
 export const generateOTPId = () => {
 	return `otp:${v4()}-${Date.now()}`;
+};
+
+export const generateRefreshTokenId = (userId = null) => {
+	return `refresh:${userId || v4()}-${Date.now()}`;
 };
 
 export const getLocationFromIP = async (ip) => {
@@ -41,4 +51,20 @@ export const generateAuthenticatedData = (modelData) => {
 	};
 	console.log(data);
 	return _.omit(data, ["salt", "hash"]);
+};
+
+export const generateAuthTokens = async (authId) => {
+	/** @info - Generate & store Refresh Token key */
+	const refreshId = generateRefreshTokenId();
+	const refreshToken = jwtService.generateTokenFromPayload(
+		{
+			authId,
+			refreshId,
+		},
+		TTL.IN_7_DAYS,
+	);
+	await cacheService.set(refreshId, authId, TTL.IN_7_DAYS);
+
+	const accessToken = jwtService.generateToken(authId);
+	return { accessToken, refreshToken };
 };
