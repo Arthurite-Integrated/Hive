@@ -168,6 +168,8 @@ export const BaseUserSchema = new Schema(
 		timestamps: true,
 		versionKey: false,
 		virtuals: true,
+		toJson: { virtuals: true }, // Ensure virtuals are included when converting to JSON
+		toObject: { virtuals: true }, // Ensure virtuals are included when converting to plain objects
 	},
 );
 
