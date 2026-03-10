@@ -15,4 +15,6 @@ export const ModelCollections = {
 	NOTIFICATION: "notification",
 	MESSAGE: "message",
 	LOCATION: "location",
+
+	PARENT_STUDENT_LINK: "parent_student_link",
 };
