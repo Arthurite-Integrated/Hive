@@ -1,26 +1,5 @@
 version: '3'
 services:
-  hive:
-    build: .
-    container_name: hive
-    restart: unless-stopped
-    ports:
-      - "4000:3000"
-    volumes:
-      - ./:/app
-      - /app/node_modules
-    networks:
-      - hive_network
-    env_file:
-      - ./.env.development
-    environment:
-      NODE_ENV: production
-      MONGO_URI: mongodb://root:spectra@mongodb:27017
-      REDIS_URI: redis://redis:6379
-    depends_on:
-      - mongodb
-      - redis
-
   node:
     image: node:25-alpine
     restart: always

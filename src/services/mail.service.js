@@ -9,12 +9,8 @@ import { logger } from "#utils/logger";
 
 const mail = config.mail;
 
-// Determine email templates path
 const getEmailsPath = () => {
 	const emailsPath = path.join(process.cwd(), "src/emails");
-	
-	logger.info(`📧 Environment: ${config.env}`);
-	logger.info(`📧 Email templates path: ${emailsPath}`);
 	logger.info(`📧 Path exists: ${fs.existsSync(emailsPath)}`);
 
 	if (fs.existsSync(emailsPath)) {
@@ -24,7 +20,6 @@ const getEmailsPath = () => {
 
 	return emailsPath;
 };
-
 
 export class EmailService {
 	static instance = null;

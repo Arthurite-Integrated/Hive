@@ -1,5 +1,5 @@
 import { throwNotFoundError } from "#helpers/errors/throw-error";
-import { Student } from "#models/student.model";
+import { Student } from "#modules/student/student.model";
 
 const studentModel = Student;
 

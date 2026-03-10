@@ -1,4 +1,5 @@
 import { model, Schema } from "mongoose";
+import { ModelCollections } from "#enums/models/index";
 
 const collectionName = ModelCollections.LOCATION;
 
@@ -22,7 +23,12 @@ const LocationSchema = new Schema(
 		},
 		zipCode: {
 			type: String,
-			required: [true, "Zip code is required"],
+			required: false,
+		},
+		accountId: {
+			type: Schema.Types.ObjectId,
+			unique: true,
+			sparse: true, // This allows multiple null values but ensures uniqueness for non-null values
 		},
 	},
 	{

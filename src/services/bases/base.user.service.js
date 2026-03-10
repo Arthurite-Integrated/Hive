@@ -100,6 +100,7 @@ export class BaseUserService {
 	};
 
 	login = async (data) => {
+		console.log(data);
 		const { email, password, loginType } = data;
 
 		let user =

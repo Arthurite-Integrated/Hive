@@ -12,7 +12,6 @@ import { RequestLogger } from "#middlewares/request-logger";
 import { routeNotFound } from "#middlewares/route-not-found";
 import { appRouter } from "#routes/router";
 import { EmailQueueService } from "#services/queues/email.queue.service";
-import { EmailWorkerService } from "#services/workers/email.worker.service";
 import { logger } from "#utils/logger";
 
 let PORT = config.server.port;
@@ -90,8 +89,6 @@ app.use(errorHandler);
 
 function startServer(port) {
 	server.listen(port, () => {
-		EmailWorkerService.getInstance();
-
 		logger.info(`Server is running on port ${port}`);
 		console.log(getMessage(port));
 	});
