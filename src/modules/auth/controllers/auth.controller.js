@@ -110,7 +110,7 @@ export class AuthController {
 			res,
 			{
 				message: "Facebook authentication url generated successfully",
-				data,
+				data: { url: data },
 			},
 			StatusCodes.OK,
 		);
@@ -118,24 +118,19 @@ export class AuthController {
 
 	loginWithFacebook = async (req, res) => {
 		const data = await this.authService.loginWithFacebook(req.query);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Facebook login successful",
-				data,
-			},
-			StatusCodes.OK,
+		res.setHeader(
+			"Content-Security-Policy",
+			"script-src 'self' 'unsafe-inline'",
 		);
+		return res.status(StatusCodes.OK).send(data);
 	};
+
 	signupWithFacebook = async (req, res) => {
 		const data = await this.authService.signupWithFacebook(req.query);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Facebook signup successful",
-				data,
-			},
-			StatusCodes.CREATED,
+		res.setHeader(
+			"Content-Security-Policy",
+			"script-src 'self' 'unsafe-inline'",
 		);
+		return res.status(StatusCodes.OK).send(data);
 	};
 }
