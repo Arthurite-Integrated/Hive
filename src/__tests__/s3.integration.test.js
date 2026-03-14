@@ -30,7 +30,10 @@ describe("S3 Integration Tests (LocalStack)", () => {
 			await client.send(new CreateBucketCommand({ Bucket: BUCKET }));
 		} catch (err) {
 			// Bucket may already exist — that's fine
-			if (err.name !== "BucketAlreadyOwnedByYou" && err.name !== "BucketAlreadyExists") {
+			if (
+				err.name !== "BucketAlreadyOwnedByYou" &&
+				err.name !== "BucketAlreadyExists"
+			) {
 				throw err;
 			}
 		}
@@ -133,15 +136,11 @@ describe("S3 Integration Tests (LocalStack)", () => {
 	it("should delete a file from S3", async () => {
 		const key = "avatars/test-avatar.png";
 
-		await client.send(
-			new DeleteObjectCommand({ Bucket: BUCKET, Key: key }),
-		);
+		await client.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
 
 		// Verify the object no longer exists
 		try {
-			await client.send(
-				new HeadObjectCommand({ Bucket: BUCKET, Key: key }),
-			);
+			await client.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }));
 			expect.fail("Object should have been deleted");
 		} catch (err) {
 			expect(err.name).toBe("NotFound");

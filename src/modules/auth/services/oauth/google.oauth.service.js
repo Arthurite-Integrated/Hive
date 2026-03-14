@@ -3,7 +3,11 @@ import { config } from "#config/config";
 import { TTL } from "#constants/ttl.constant";
 import { AuthMethods, GoogleOAuthAction } from "#enums/auth/index";
 import { UserTypes } from "#enums/user.enums";
-import { generateAuthenticatedData, generateAuthId } from "#helpers/auth/index";
+import {
+	generateAuthenticatedData,
+	generateAuthId,
+	generateAuthTokens,
+} from "#helpers/auth/index";
 import { throwBadRequestError } from "#helpers/errors/throw-error";
 import { decodeBase64, generateBase64 } from "#helpers/index";
 import { BaseOAuthService } from "#services/bases/base.oauth.service";
@@ -12,6 +16,13 @@ import { JwtService } from "#services/jwt.service";
 import { Instructor } from "#modules/instructor/instructor.model";
 import { Parent } from "#modules/parent/parent.model";
 import { Student } from "#modules/student/student.model";
+import { oauthResponsePage } from "#helpers/auth/oauth.helper";
+
+const USER_TYPE_MODEL_MAP = {
+	[UserTypes.INSTRUCTOR]: { model: Instructor, label: "instructor" },
+	[UserTypes.PARENT]: { model: Parent, label: "parent" },
+	[UserTypes.STUDENT]: { model: Student, label: "student" },
+};
 
 export class GoogleOAuthService extends BaseOAuthService {
 	static instance = null;
@@ -20,16 +31,10 @@ export class GoogleOAuthService extends BaseOAuthService {
 	constructor() {
 		super();
 		this.google = google;
-		this.googleLoginAuth = this.googleLoginAuth();
-		this.googleSignupAuth = this.googleSignupAuth();
+		this.googleLoginAuth = this.#createOAuth2Client(GoogleOAuthAction.LOGIN);
+		this.googleSignupAuth = this.#createOAuth2Client(GoogleOAuthAction.SIGNUP);
 		this.googleAuth = new this.google.auth.OAuth2();
 
-		/** @info - Models */
-		this.instructorModel = Instructor;
-		this.parentModel = Parent;
-		this.studentModel = Student;
-
-		/** @info - Services */
 		this.jwtService = JwtService.getInstance();
 		this.cacheService = CacheService.getInstance();
 	}
@@ -42,129 +47,47 @@ export class GoogleOAuthService extends BaseOAuthService {
 		return GoogleOAuthService.instance;
 	}
 
-	googleLoginAuth = () => {
+	// ── Private Helpers ─────────────────────────────────────────
+
+	#createOAuth2Client(action) {
 		return new google.auth.OAuth2(
 			config.google.clientId,
 			config.google.clientSecret,
-			this.generateRedirectUrl(GoogleOAuthAction.LOGIN),
+			this.#buildRedirectUrl(action),
 		);
-	};
+	}
 
-	googleSignupAuth = () => {
-		return new google.auth.OAuth2(
-			config.google.clientId,
-			config.google.clientSecret,
-			this.generateRedirectUrl(GoogleOAuthAction.SIGNUP),
-		);
-	};
+	#buildRedirectUrl(action) {
+		const base =
+			config.env === "development"
+				? "http://127.0.0.1:3000"
+				: `https://${config.server.serverDomain}`;
+		return `${base}/api/v1/auth/google/${action}/callback`;
+	}
 
-	generateRedirectUrl = (action) => {
-		return config.env === "development"
-			? `http://127.0.0.1:3000/api/v1/auth/google/${action}/callback`
-			: `https://${config.server.serverDomain}/api/v1/auth/google/${action}/callback`;
-	};
+	#getOAuth2ClientForAction(action) {
+		if (action === GoogleOAuthAction.LOGIN) return this.googleLoginAuth;
+		if (action === GoogleOAuthAction.SIGNUP) return this.googleSignupAuth;
+		throwBadRequestError("Invalid action.");
+	}
 
-	getUserInfoFromAccessToken = async (accessToken) => {
-		this.googleAuth.setCredentials({ access_token: accessToken });
+	#resolveModelAndLabel(userType) {
+		const entry = USER_TYPE_MODEL_MAP[userType];
+		if (!entry) throwBadRequestError("Invalid user type.");
+		return entry;
+	}
 
-		const userInfo = await this.google.oauth2("v2").userinfo.get({
-			auth: this.googleAuth,
-		});
+	async #exchangeCodeForUserInfo(oauthClient, code) {
+		const { tokens } = await oauthClient.getToken(code);
+		this.googleAuth.setCredentials({ access_token: tokens.access_token });
+		const { data: userInfo } = await this.google
+			.oauth2("v2")
+			.userinfo.get({ auth: this.googleAuth });
+		return { tokens, userInfo };
+	}
 
-		return userInfo.data;
-	};
-
-	authenticate = async (userType, action) => {
-		switch (action) {
-			case GoogleOAuthAction.LOGIN:
-				return this.googleLoginAuth.generateAuthUrl({
-					access_type: "offline",
-					scope: [
-						"https://www.googleapis.com/auth/userinfo.email",
-						"https://www.googleapis.com/auth/userinfo.profile",
-					],
-					state: generateBase64(userType),
-				});
-			case GoogleOAuthAction.SIGNUP:
-				return this.googleSignupAuth.generateAuthUrl({
-					access_type: "offline",
-					prompt: "consent",
-					scope: [
-						"https://www.googleapis.com/auth/userinfo.email",
-						"https://www.googleapis.com/auth/userinfo.profile",
-					],
-					state: generateBase64(userType),
-				});
-			default:
-				throwBadRequestError("Invalid action.");
-		}
-	};
-
-	signup = async (code, state) => {
-		const userType = decodeBase64(state);
-		if (!Object.values(UserTypes).includes(userType))
-			throwBadRequestError("Invalid user type.");
-
-		const authId = generateAuthId();
-		const token = this.jwtService.generateToken(authId);
-
-		const { tokens } = await this.googleSignupAuth.getToken(code);
-		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
-
-		let user;
-		switch (userType) {
-			case UserTypes.INSTRUCTOR:
-				user = await this.instructorModel.findOne({ email: userInfo.email });
-				if (user)
-					throwBadRequestError(
-						"Instructor already exists. Please proceed to login.",
-					);
-
-				user = await this.instructorModel.create({
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
-					authMethod: AuthMethods.GOOGLE,
-					avatar: userInfo.picture,
-				});
-				break;
-			case UserTypes.PARENT:
-				user = await this.parentModel.findOne({ email: userInfo.email });
-				if (user)
-					throwBadRequestError(
-						"Parent already exists. Please proceed to login.",
-					);
-
-				user = await this.parentModel.create({
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
-					authMethod: AuthMethods.GOOGLE,
-					avatar: userInfo.picture,
-				});
-				break;
-			case UserTypes.STUDENT:
-				user = await this.studentModel.findOne({ email: userInfo.email });
-				if (user)
-					throwBadRequestError(
-						"Student already exists. Please proceed to login.",
-					);
-
-				user = await this.studentModel.create({
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
-					authMethod: AuthMethods.GOOGLE,
-					avatar: userInfo.picture,
-				});
-				break;
-			default:
-				throwBadRequestError("Invalid user type.");
-		}
-
-		console.log(tokens);
-
-		user.google = {
+	#buildGoogleCredentials(tokens) {
+		return {
 			accessToken: tokens.access_token,
 			refreshToken: tokens.refresh_token,
 			expiryDate: new Date(tokens.expiry_date),
@@ -172,103 +95,148 @@ export class GoogleOAuthService extends BaseOAuthService {
 			tokenType: tokens.token_type,
 			idToken: tokens.id_token,
 		};
+	}
 
-		user.emailVerified = true;
-		user.emailVerifiedAt = new Date();
-		user.lastLoginAt = new Date();
-
-		user = await user.save();
-
+	async #finaliseSession(user) {
 		user = user.toObject();
-
-		// Delete google credentials from the user object before caching
 		delete user.google;
-
 		user = generateAuthenticatedData(user);
 
+		const authId = generateAuthId(user._id);
+		const gen_tokens = await generateAuthTokens(authId);
 		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
 
-		return { user, token };
+		return { user, gen_tokens };
+	}
+
+	// ── Public API ──────────────────────────────────────────────
+
+	getUserInfoFromAccessToken = async (accessToken) => {
+		this.googleAuth.setCredentials({ access_token: accessToken });
+		const { data } = await this.google
+			.oauth2("v2")
+			.userinfo.get({ auth: this.googleAuth });
+		return data;
+	};
+
+	authenticate = async (userType, action) => {
+		const client = this.#getOAuth2ClientForAction(action);
+		return client.generateAuthUrl({
+			access_type: "offline",
+			prompt: "consent",
+			scope: [
+				"https://www.googleapis.com/auth/userinfo.email",
+				"https://www.googleapis.com/auth/userinfo.profile",
+			],
+			state: generateBase64(userType),
+		});
+	};
+
+	signup = async (code, state) => {
+		const userType = decodeBase64(state);
+		const { model, label } = this.#resolveModelAndLabel(userType);
+
+		let tokens, userInfo;
+		try {
+			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
+				this.googleSignupAuth,
+				code,
+			));
+		} catch (err) {
+			console.error(err);
+			return oauthResponsePage({
+				title: "OAuth Authentication Error",
+				message: "Failed to authenticate with Google. Please try again.",
+				status: "error",
+				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
+			});
+		}
+
+		const existing = await model.findOne({ email: userInfo.email });
+		if (existing) {
+			return oauthResponsePage({
+				title: "Account Already Exists",
+				message: `A ${label} account with this email already exists. Please proceed to login.`,
+				status: "error",
+				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+			});
+		}
+
+		const user = await model.create({
+			firstName: userInfo.given_name,
+			lastName: userInfo.family_name,
+			email: userInfo.email,
+			authMethod: AuthMethods.GOOGLE,
+			avatar: userInfo.picture,
+			google: this.#buildGoogleCredentials(tokens),
+			emailVerified: true,
+			emailVerifiedAt: new Date(),
+			lastLoginAt: new Date(),
+		});
+
+		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
+
+		return oauthResponsePage({
+			title: "Welcome to Hive 😊",
+			message: `Signed in as ${sessionUser.email}`,
+			status: "success",
+			autoClose: true,
+			payload: { type: "oauth_success", user: sessionUser, ...gen_tokens },
+		});
 	};
 
 	login = async (code, state) => {
 		const userType = decodeBase64(state);
-		if (!Object.values(UserTypes).includes(userType))
-			throwBadRequestError("Invalid user type.");
+		const { model, label } = this.#resolveModelAndLabel(userType);
 
-		const { tokens } = await this.googleLoginAuth.getToken(code);
-		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
-		console.log(userInfo);
-
-		const authId = generateAuthId();
-		const token = this.jwtService.generateToken(authId);
-
-		let user;
-		switch (userType) {
-			case UserTypes.INSTRUCTOR:
-				user = await this.instructorModel.findOne({ email: userInfo.email });
-				if (!user) throwBadRequestError("Instructor not found.");
-				if (user.authMethod !== AuthMethods.GOOGLE)
-					throwBadRequestError(
-						"Instructor is not linked with Google. Login with email credentials",
-					);
-
-				user.google.accessToken = tokens.access_token;
-				user.google.refreshToken = tokens.refresh_token;
-				user.google.expiryDate = new Date(tokens.expiry_date);
-				user.google.scope = tokens.scope;
-				user.google.tokenType = tokens.token_type;
-				user.google.idToken = tokens.id_token;
-
-				break;
-			case UserTypes.PARENT:
-				user = await this.parentModel.findOne({ email: userInfo.email });
-				if (!user) throwBadRequestError("Parent not found.");
-				if (user.authMethod !== AuthMethods.GOOGLE)
-					throwBadRequestError(
-						"Parent is not linked with Google. Login with email credentials",
-					);
-
-				user.google.accessToken = tokens.access_token;
-				user.google.refreshToken = tokens.refresh_token;
-				user.google.expiryDate = new Date(tokens.expiry_date);
-				user.google.scope = tokens.scope;
-				user.google.tokenType = tokens.token_type;
-				user.google.idToken = tokens.id_token;
-
-				break;
-			case UserTypes.STUDENT:
-				user = await this.studentModel.findOne({ email: userInfo.email });
-				if (!user) throwBadRequestError("Student not found.");
-				if (user.authMethod !== AuthMethods.GOOGLE)
-					throwBadRequestError(
-						"Student is not linked with Google. Login with email credentials",
-					);
-
-				user.google.accessToken = tokens.access_token;
-				user.google.refreshToken = tokens.refresh_token;
-				user.google.expiryDate = new Date(tokens.expiry_date);
-				user.google.scope = tokens.scope;
-				user.google.tokenType = tokens.token_type;
-				user.google.idToken = tokens.id_token;
-
-				break;
-			default:
-				throwBadRequestError("Invalid user type.");
+		let tokens, userInfo;
+		try {
+			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
+				this.googleLoginAuth,
+				code,
+			));
+		} catch (err) {
+			console.error(err);
+			return oauthResponsePage({
+				title: "OAuth Authentication Error",
+				message: "Failed to authenticate with Google. Please try again.",
+				status: "error",
+				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
+			});
 		}
 
+		const user = await model.findOne({ email: userInfo.email });
+
+		if (!user) {
+			return oauthResponsePage({
+				title: "Account Not Found",
+				message: `No ${label} account found with this email. Please sign up first.`,
+				status: "error",
+				payload: { type: "oauth_error", code: "ACCOUNT_NOT_FOUND" },
+			});
+		}
+
+		if (user.authMethod !== AuthMethods.GOOGLE) {
+			return oauthResponsePage({
+				title: "OAuth Account Error",
+				message: `This ${label} account is not linked with Google. Login with email credentials.`,
+				status: "error",
+				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+			});
+		}
+
+		user.google = this.#buildGoogleCredentials(tokens);
 		user.lastLoginAt = new Date();
+		await user.save();
 
-		user = await user.save();
-		user = user.toObject();
+		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
 
-		// Delete google credentials from the user object before caching
-		delete user.google;
-
-		user = generateAuthenticatedData(user);
-
-		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
-
-		return { user, token };
+		return oauthResponsePage({
+			title: "Welcome Back",
+			message: `Signed in as ${sessionUser.email}`,
+			status: "success",
+			autoClose: true,
+			payload: { type: "oauth_success", user: sessionUser, ...gen_tokens },
+		});
 	};
 }

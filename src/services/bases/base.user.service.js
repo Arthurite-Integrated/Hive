@@ -8,6 +8,7 @@ import { UserTypes } from "#enums/user.enums";
 import {
 	generateAuthenticatedData,
 	generateAuthId,
+	generateAuthTokens,
 	generateOTP,
 	generateOTPId,
 } from "#helpers/auth/index";
@@ -108,8 +109,7 @@ export class BaseUserService {
 			throwNotFoundError(
 				`${this.modelName[0].toUpperCase() + this.modelName.slice(1)} not found`,
 			);
-		const authId = generateAuthId();
-		const token = this.jwtService.generateToken(authId);
+		const authId = generateAuthId(user._id);
 
 		console.log(authId);
 
@@ -134,7 +134,7 @@ export class BaseUserService {
 				response = {
 					message: "Login successful",
 					user: generateAuthenticatedData(user.toObject()),
-					token,
+					...(await generateAuthTokens(authId)),
 				};
 				break;
 			}
@@ -182,7 +182,7 @@ export class BaseUserService {
 
 				response = {
 					message: "An otp has being sent to your email.",
-					token,
+					token: this.jwtService.generateToken(authId),
 				};
 				break;
 			}

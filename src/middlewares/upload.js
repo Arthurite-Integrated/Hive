@@ -232,8 +232,6 @@ export const generateVideoUploadUrl = async ({ contentType, folder }) => {
  */
 export const validateVideoUploadKey = (key, folder) => {
 	if (!key || !key.startsWith(`${folder}/`)) {
-		throwBadRequestError(
-			`Invalid upload key. Expected key under "${folder}/"`,
-		);
+		throwBadRequestError(`Invalid upload key. Expected key under "${folder}/"`);
 	}
 };

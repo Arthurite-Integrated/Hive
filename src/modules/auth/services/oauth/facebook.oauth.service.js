@@ -3,7 +3,11 @@ import { config } from "#config/config";
 import { TTL } from "#constants/ttl.constant";
 import { AuthMethods, FacebookOAuthAction } from "#enums/auth/index";
 import { UserTypes } from "#enums/user.enums";
-import { generateAuthenticatedData, generateAuthId } from "#helpers/auth/index";
+import {
+	generateAuthenticatedData,
+	generateAuthId,
+	generateAuthTokens,
+} from "#helpers/auth/index";
 import { throwBadRequestError } from "#helpers/errors/throw-error";
 import { decodeBase64, generateBase64 } from "#helpers/index";
 import { BaseOAuthService } from "#services/bases/base.oauth.service";
@@ -12,6 +16,13 @@ import { JwtService } from "#services/jwt.service";
 import { Instructor } from "#modules/instructor/instructor.model";
 import { Parent } from "#modules/parent/parent.model";
 import { Student } from "#modules/student/student.model";
+import { oauthResponsePage } from "#helpers/auth/oauth.helper";
+
+const USER_TYPE_MODEL_MAP = {
+	[UserTypes.INSTRUCTOR]: { model: Instructor, label: "instructor" },
+	[UserTypes.PARENT]: { model: Parent, label: "parent" },
+	[UserTypes.STUDENT]: { model: Student, label: "student" },
+};
 
 export class FacebookOAuthService extends BaseOAuthService {
 	static instance = null;
@@ -25,12 +36,6 @@ export class FacebookOAuthService extends BaseOAuthService {
 		this.scope = "email,public_profile";
 		this.graphApiVersion = "v18.0";
 
-		/** @info - Models */
-		this.instructorModel = Instructor;
-		this.parentModel = Parent;
-		this.studentModel = Student;
-
-		/** @info - Services */
 		this.jwtService = JwtService.getInstance();
 		this.cacheService = CacheService.getInstance();
 	}
@@ -43,27 +48,60 @@ export class FacebookOAuthService extends BaseOAuthService {
 		return FacebookOAuthService.instance;
 	}
 
-	generateRedirectUrl = (action) => {
-		return config.env === "development"
-			? `http://localhost:3000/api/v1/auth/facebook/${action}/callback`
-			: `https://${config.server.serverDomain}/api/v1/auth/facebook/${action}/callback`;
-	};
+	// ── Private Helpers ─────────────────────────────────────────
 
-	/**
-	 * Get Facebook access token from authorization code
-	 */
+	#buildRedirectUrl(action) {
+		const base =
+			config.env === "development"
+				? "http://localhost:3000"
+				: `https://${config.server.serverDomain}`;
+		return `${base}/api/v1/auth/facebook/${action}/callback`;
+	}
+
+	#resolveModelAndLabel(userType) {
+		const entry = USER_TYPE_MODEL_MAP[userType];
+		if (!entry) throwBadRequestError("Invalid user type.");
+		return entry;
+	}
+
+	#buildFacebookCredentials(tokens) {
+		return {
+			accessToken: tokens.access_token,
+			tokenType: tokens.token_type,
+			expiresDate: tokens.expires_in || 0,
+		};
+	}
+
+	async #exchangeCodeForUserInfo(code, action) {
+		const tokens = await this.getAccessToken(code, action);
+		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
+		return { tokens, userInfo };
+	}
+
+	async #finaliseSession(user) {
+		user = user.toObject();
+		delete user.facebook;
+		user = generateAuthenticatedData(user);
+
+		const authId = generateAuthId(user._id);
+		const gen_tokens = await generateAuthTokens(authId);
+		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
+
+		return { user, gen_tokens };
+	}
+
+	// ── Public API ──────────────────────────────────────────────
+
 	getAccessToken = async (code, action) => {
 		try {
-			const redirectUri = this.generateRedirectUrl(action);
-			const params = new URLSearchParams({
-				client_id: this.clientId,
-				client_secret: this.clientSecret,
-				redirect_uri: redirectUri,
-				code,
-			});
-
-			const response = await axios.get(
-				`https://graph.facebook.com/${this.graphApiVersion}/oauth/access_token?${params.toString()}`,
+			const response = await axios.post(
+				`https://graph.facebook.com/${this.graphApiVersion}/oauth/access_token`,
+				{
+					client_id: this.clientId,
+					client_secret: this.clientSecret,
+					redirect_uri: this.#buildRedirectUrl(action),
+					code,
+				},
 			);
 
 			return response.data;
@@ -76,14 +114,17 @@ export class FacebookOAuthService extends BaseOAuthService {
 		}
 	};
 
-	/**
-	 * Get user info from Facebook using access token
-	 */
 	getUserInfoFromAccessToken = async (accessToken) => {
 		try {
 			const fields = "id,email,first_name,last_name,picture.type(large)";
 			const response = await axios.get(
-				`https://graph.facebook.com/${this.graphApiVersion}/me?fields=${fields}&access_token=${accessToken}`,
+				`https://graph.facebook.com/${this.graphApiVersion}/me`,
+				{
+					params: {
+						fields,
+						access_token: accessToken,
+					},
+				},
 			);
 
 			const userInfo = response.data;
@@ -110,206 +151,130 @@ export class FacebookOAuthService extends BaseOAuthService {
 		}
 	};
 
-	/**
-	 * Generate Facebook OAuth URL
-	 */
 	authenticate = async (userType, action) => {
-		const redirectUri = this.generateRedirectUrl(action);
-		const state = generateBase64(userType);
-
 		const params = new URLSearchParams({
 			client_id: this.clientId,
-			redirect_uri: redirectUri,
-			scope: this.scope,
+			redirect_uri: this.#buildRedirectUrl(action),
+			// scope: this.scope,
+			config_id: config.facebook.configId,
 			response_type: "code",
-			state,
+			state: generateBase64(userType),
 		});
 
-		switch (action) {
-			case FacebookOAuthAction.LOGIN:
-				return `https://www.facebook.com/${this.graphApiVersion}/dialog/oauth?${params.toString()}`;
-			case FacebookOAuthAction.SIGNUP:
-				params.append("auth_type", "rerequest");
-				return `https://www.facebook.com/${this.graphApiVersion}/dialog/oauth?${params.toString()}`;
-			default:
-				throwBadRequestError("Invalid action.");
+		if (action === FacebookOAuthAction.SIGNUP) {
+			params.append("auth_type", "rerequest");
+		} else if (action !== FacebookOAuthAction.LOGIN) {
+			throwBadRequestError("Invalid action.");
 		}
+
+		return `https://www.facebook.com/${this.graphApiVersion}/dialog/oauth?${params.toString()}`;
 	};
 
-	/**
-	 * Handle Facebook OAuth signup
-	 */
 	signup = async (code, state) => {
 		const userType = decodeBase64(state);
-		if (!Object.values(UserTypes).includes(userType))
-			throwBadRequestError("Invalid user type.");
+		const { model, label } = this.#resolveModelAndLabel(userType);
 
-		const authId = generateAuthId();
-		const token = this.jwtService.generateToken(authId);
-
-		// Exchange code for access token
-		const tokens = await this.getAccessToken(code, FacebookOAuthAction.SIGNUP);
-		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
-
-		const facebookCredentials = {
-			accessToken: tokens.access_token,
-			tokenType: tokens.token_type,
-			expiresDate: tokens.expires_in || 0,
-		};
-
-		let user;
-		switch (userType) {
-			case UserTypes.INSTRUCTOR:
-				user = await this.instructorModel.findOne({ email: userInfo.email });
-				if (user)
-					throwBadRequestError(
-						"Instructor already exists. Please proceed to login.",
-					);
-
-				user = await this.instructorModel.create({
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
-					authMethod: AuthMethods.FACEBOOK,
-					avatar: userInfo.picture,
-					facebook: facebookCredentials,
-					emailVerified: true,
-					emailVerifiedAt: new Date(),
-					lastLoginAt: new Date(),
-				});
-				break;
-			case UserTypes.PARENT:
-				user = await this.parentModel.findOne({ email: userInfo.email });
-				if (user)
-					throwBadRequestError(
-						"Parent already exists. Please proceed to login.",
-					);
-
-				user = await this.parentModel.create({
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
-					authMethod: AuthMethods.FACEBOOK,
-					avatar: userInfo.picture,
-					facebook: facebookCredentials,
-					emailVerified: true,
-					emailVerifiedAt: new Date(),
-					lastLoginAt: new Date(),
-				});
-				break;
-			case UserTypes.STUDENT:
-				user = await this.studentModel.findOne({ email: userInfo.email });
-				if (user)
-					throwBadRequestError(
-						"Student already exists. Please proceed to login.",
-					);
-
-				user = await this.studentModel.create({
-					firstName: userInfo.given_name,
-					lastName: userInfo.family_name,
-					email: userInfo.email,
-					authMethod: AuthMethods.FACEBOOK,
-					avatar: userInfo.picture,
-					facebook: facebookCredentials,
-					emailVerified: true,
-					emailVerifiedAt: new Date(),
-					lastLoginAt: new Date(),
-				});
-				break;
-			default:
-				throwBadRequestError("Invalid user type.");
+		let tokens, userInfo;
+		try {
+			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
+				code,
+				FacebookOAuthAction.SIGNUP,
+			));
+		} catch (err) {
+			console.error(err);
+			return oauthResponsePage({
+				title: "OAuth Authentication Error",
+				message: "Failed to authenticate with Facebook. Please try again.",
+				status: "error",
+				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
+			});
 		}
 
-		user = user.toObject();
+		const existing = await model.findOne({ email: userInfo.email });
+		if (existing) {
+			return oauthResponsePage({
+				title: "Account Already Exists",
+				message: `A ${label} account with this email already exists. Please proceed to login.`,
+				status: "error",
+				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+			});
+		}
 
-		// Delete facebook credentials from the user object before caching
-		delete user.facebook;
+		const user = await model.create({
+			firstName: userInfo.given_name,
+			lastName: userInfo.family_name,
+			email: userInfo.email,
+			authMethod: AuthMethods.FACEBOOK,
+			avatar: userInfo.picture,
+			facebook: this.#buildFacebookCredentials(tokens),
+			emailVerified: true,
+			emailVerifiedAt: new Date(),
+			lastLoginAt: new Date(),
+		});
 
-		user = generateAuthenticatedData(user);
+		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
 
-		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
-
-		return { user, token };
+		return oauthResponsePage({
+			title: "Welcome to Hive 😊",
+			message: `Signed in as ${sessionUser.email}`,
+			status: "success",
+			autoClose: true,
+			payload: { type: "oauth_success", user: sessionUser, ...gen_tokens },
+		});
 	};
 
-	/**
-	 * Handle Facebook OAuth login
-	 */
 	login = async (code, state) => {
 		const userType = decodeBase64(state);
-		if (!Object.values(UserTypes).includes(userType))
-			throwBadRequestError("Invalid user type.");
+		const { model, label } = this.#resolveModelAndLabel(userType);
 
-		// Exchange code for access token
-		const tokens = await this.getAccessToken(code, FacebookOAuthAction.LOGIN);
-		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
-
-		const authId = generateAuthId();
-		const token = this.jwtService.generateToken(authId);
-
-		let user;
-		switch (userType) {
-			case UserTypes.INSTRUCTOR:
-				user = await this.instructorModel.findOne({ email: userInfo.email });
-				if (!user) throwBadRequestError("Instructor not found.");
-				if (user.authMethod !== AuthMethods.FACEBOOK)
-					throwBadRequestError(
-						"Instructor is not linked with Facebook. Login with email credentials",
-					);
-
-				user.facebook = {
-					accessToken: tokens.access_token,
-					tokenType: tokens.token_type,
-					expiresDate: tokens.expires_in || 0,
-				};
-				break;
-
-			case UserTypes.PARENT:
-				user = await this.parentModel.findOne({ email: userInfo.email });
-				if (!user) throwBadRequestError("Parent not found.");
-				if (user.authMethod !== AuthMethods.FACEBOOK)
-					throwBadRequestError(
-						"Parent is not linked with Facebook. Login with email credentials",
-					);
-
-				user.facebook = {
-					accessToken: tokens.access_token,
-					tokenType: tokens.token_type,
-					expiresDate: tokens.expires_in || 0,
-				};
-				break;
-
-			case UserTypes.STUDENT:
-				user = await this.studentModel.findOne({ email: userInfo.email });
-				if (!user) throwBadRequestError("Student not found.");
-				if (user.authMethod !== AuthMethods.FACEBOOK)
-					throwBadRequestError(
-						"Student is not linked with Facebook. Login with email credentials",
-					);
-
-				user.facebook = {
-					accessToken: tokens.access_token,
-					tokenType: tokens.token_type,
-					expiresDate: tokens.expires_in || 0,
-				};
-				break;
-
-			default:
-				throwBadRequestError("Invalid user type.");
+		let tokens, userInfo;
+		try {
+			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
+				code,
+				FacebookOAuthAction.LOGIN,
+			));
+		} catch (err) {
+			console.error(err);
+			return oauthResponsePage({
+				title: "OAuth Authentication Error",
+				message: "Failed to authenticate with Facebook. Please try again.",
+				status: "error",
+				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
+			});
 		}
 
+		const user = await model.findOne({ email: userInfo.email });
+
+		if (!user) {
+			return oauthResponsePage({
+				title: "Account Not Found",
+				message: `No ${label} account found with this email. Please sign up first.`,
+				status: "error",
+				payload: { type: "oauth_error", code: "ACCOUNT_NOT_FOUND" },
+			});
+		}
+
+		if (user.authMethod !== AuthMethods.FACEBOOK) {
+			return oauthResponsePage({
+				title: "OAuth Account Error",
+				message: `This ${label} account is not linked with Facebook. Login with email credentials.`,
+				status: "error",
+				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
+			});
+		}
+
+		user.facebook = this.#buildFacebookCredentials(tokens);
 		user.lastLoginAt = new Date();
+		await user.save();
 
-		user = await user.save();
-		user = user.toObject();
+		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
 
-		// Delete facebook credentials from the user object before caching
-		delete user.facebook;
-
-		user = generateAuthenticatedData(user);
-
-		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
-
-		return { user, token };
+		return oauthResponsePage({
+			title: "Welcome Back",
+			message: `Signed in as ${sessionUser.email}`,
+			status: "success",
+			autoClose: true,
+			payload: { type: "oauth_success", user: sessionUser, ...gen_tokens },
+		});
 	};
 }

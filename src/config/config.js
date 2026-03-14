@@ -52,6 +52,7 @@ export const config = {
 		clientId: env.FACEBOOK_CLIENT_ID,
 		clientSecret: env.FACEBOOK_CLIENT_SECRET,
 		redirectUri: env.FACEBOOK_REDIRECT_URI,
+		configId: env.FACEBOOK_CONFIG_ID,
 	},
 	encryption: {
 		key: env.ENCRYPTION_KEY,

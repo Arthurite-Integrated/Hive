@@ -1,6 +1,10 @@
 import Router from "express";
 import { JwtService } from "#services/jwt.service";
-import { loginSchema, signupSchema } from "#validator/auth/index";
+import {
+	loginSchema,
+	refreshTokenSchema,
+	signupSchema,
+} from "#validator/auth/index";
 import { ZodEngine } from "#validator/engine/zod.engine";
 import { verifyOTPSchema } from "#validator/verification.schema";
 import { AuthController } from "../controllers/auth.controller.js";
@@ -24,6 +28,24 @@ authRouter.post(
 	"/login",
 	zodEngine.validate.body(loginSchema),
 	authController.login,
+);
+
+authRouter.post(
+	"/refresh",
+	zodEngine.validate.body(refreshTokenSchema),
+	authController.refreshToken,
+);
+
+authRouter.post(
+	"/logout",
+	zodEngine.validate.body(refreshTokenSchema),
+	authController.logout,
+);
+
+authRouter.post(
+	"/logout-all",
+	zodEngine.validate.body(refreshTokenSchema),
+	authController.logoutAll,
 );
 
 /** @info - OAuth */

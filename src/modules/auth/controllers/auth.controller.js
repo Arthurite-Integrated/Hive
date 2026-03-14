@@ -45,6 +45,40 @@ export class AuthController {
 		});
 	};
 
+	refreshToken = async (req, res) => {
+		const data = await this.authService.refresh(req.body.refreshToken);
+		return sendSuccessResponse(
+			res,
+			{
+				message: "Token refreshed successfully",
+				data,
+			},
+			StatusCodes.OK,
+		);
+	};
+
+	logout = async (req, res) => {
+		await this.authService.logout(req.body.refreshToken);
+		return sendSuccessResponse(
+			res,
+			{
+				message: "Logged out successfully",
+			},
+			StatusCodes.OK,
+		);
+	};
+
+	logoutAll = async (req, res) => {
+		await this.authService.logoutAll(req.body.refreshToken);
+		return sendSuccessResponse(
+			res,
+			{
+				message: "Logged out of all accounts successfully",
+			},
+			StatusCodes.OK,
+		);
+	};
+
 	verifyEmail = async (req, res) => {
 		const data = await this.authService.verifyEmail(req.authData, req.body.otp);
 		return sendSuccessResponse(
@@ -67,7 +101,7 @@ export class AuthController {
 			res,
 			{
 				message: "Google authentication url generated successfully",
-				data,
+				data: { url: data },
 			},
 			StatusCodes.OK,
 		);
@@ -75,27 +109,22 @@ export class AuthController {
 
 	loginWithGoogle = async (req, res) => {
 		const data = await this.authService.loginWithGoogle(req.query);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Google login successful",
-				data,
-			},
-			StatusCodes.OK,
+		res.setHeader(
+			"Content-Security-Policy",
+			"script-src 'self' 'unsafe-inline'",
 		);
+		return res.status(StatusCodes.OK).send(data);
 	};
 
 	signupWithGoogle = async (req, res) => {
 		const data = await this.authService.signupWithGoogle(req.query);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Google signup successful",
-				data,
-			},
-			StatusCodes.CREATED,
+		res.setHeader(
+			"Content-Security-Policy",
+			"script-src 'self' 'unsafe-inline'",
 		);
+		return res.status(StatusCodes.OK).send(data);
 	};
+
 	/* ----Facebook---- */
 	facebookOAuth = async (req, res) => {
 		const data = await this.authService.authenticateWithFacebook(req.query);
@@ -103,7 +132,7 @@ export class AuthController {
 			res,
 			{
 				message: "Facebook authentication url generated successfully",
-				data,
+				data: { url: data },
 			},
 			StatusCodes.OK,
 		);
@@ -111,24 +140,19 @@ export class AuthController {
 
 	loginWithFacebook = async (req, res) => {
 		const data = await this.authService.loginWithFacebook(req.query);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Facebook login successful",
-				data,
-			},
-			StatusCodes.OK,
+		res.setHeader(
+			"Content-Security-Policy",
+			"script-src 'self' 'unsafe-inline'",
 		);
+		return res.status(StatusCodes.OK).send(data);
 	};
+
 	signupWithFacebook = async (req, res) => {
 		const data = await this.authService.signupWithFacebook(req.query);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Facebook signup successful",
-				data,
-			},
-			StatusCodes.CREATED,
+		res.setHeader(
+			"Content-Security-Policy",
+			"script-src 'self' 'unsafe-inline'",
 		);
+		return res.status(StatusCodes.OK).send(data);
 	};
 }

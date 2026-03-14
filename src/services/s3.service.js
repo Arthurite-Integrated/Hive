@@ -87,7 +87,10 @@ export class S3Service {
 	 * @param {number} [params.expiresIn=TTL.IN_AN_HOUR] - URL expiration in seconds (default 1 hour)
 	 * @returns {Promise<string>} - The presigned download URL
 	 */
-	generatePresignedDownloadUrl = async ({ key, expiresIn = TTL.IN_AN_HOUR }) => {
+	generatePresignedDownloadUrl = async ({
+		key,
+		expiresIn = TTL.IN_AN_HOUR,
+	}) => {
 		const command = new GetObjectCommand({
 			Bucket: this.bucket,
 			Key: key,

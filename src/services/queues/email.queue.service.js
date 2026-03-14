@@ -1,8 +1,8 @@
 import { Queue, QueueEvents } from "bullmq";
-import { getBullMQRedisClient } from "#connection/bullmq.redis.connection";
 import { TTL } from "#constants/ttl.constant";
 import { QueueNames } from "#enums/queue/index";
 import { logger } from "#utils/logger";
+import { CacheService } from "#services/cache.service";
 
 export class EmailQueueService {
 	static instance = null;
@@ -16,12 +16,12 @@ export class EmailQueueService {
 	}
 
 	constructor() {
-		const redisClient = getBullMQRedisClient();
+		this.cacheService = CacheService.getInstance();
 		this.queue = new Queue(QueueNames.EMAIL, {
-			connection: redisClient,
+			connection: this.cacheService.redis,
 		});
 		this.queueEvents = new QueueEvents(QueueNames.EMAIL, {
-			connection: redisClient,
+			connection: this.cacheService.redis,
 		});
 		this._setupJobListeners();
 	}

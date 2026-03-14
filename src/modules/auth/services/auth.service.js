@@ -1,7 +1,12 @@
 import { JwtAction } from "#enums/auth/index";
 import { EmailJobNames } from "#enums/queue/index";
 import { UserTypes } from "#enums/user.enums";
-import { generateAuthenticatedData } from "#helpers/auth/index";
+import {
+	generateAuthenticatedData,
+	generateAuthTokens,
+	grabUserIdFromAuthId,
+} from "#helpers/auth/index";
+import { TTL } from "#constants/ttl.constant";
 import {
 	throwBadRequestError,
 	throwUnauthorizedError,
@@ -80,44 +85,64 @@ export class AuthService {
 		}
 	};
 
-	// registerInstructor = async (data) => {
-	// 	return this.instructorService.register(data);
-	// };
+	refresh = async (refreshToken) => {
+		const { authId, refreshId } = this.jwtService.verifyToken(refreshToken);
+		if (!refreshId) throwUnauthorizedError("Invalid refresh token.");
 
-	// loginInstructor = async (data) => {
-	// 	return this.instructorService.login(data);
-	// };
+		if (!(await this.cacheService.redis.exists(refreshId)))
+			throwBadRequestError("Refresh token expired.");
+		console.log("Auth ID from refresh token:", refreshId);
+		await this.cacheService.delete(refreshId);
 
-	// registerParent = async (data) => {
-	// 	return this.parentService.register(data);
-	// };
+		const token = await generateAuthTokens(authId);
+		return token;
+	};
 
-	// loginParent = async (data) => {
-	// 	return this.parentService.login(data);
-	// };
+	/**
+	 * @info - Delete's refresh token from redis so the user wouldn't be able to use it to generate new access tokens. Effectively logs the user out.
+	 * @param {string} refreshToken - The refresh token to be invalidated.
+	 * @param {*} refreshToken
+	 */
+	logout = async (refreshToken) => {
+		const { refreshId, authId } = this.jwtService.verifyToken(refreshToken);
+		if (refreshId) {
+			await this.cacheService.deleteMany([refreshId, authId]);
+		}
+	};
 
-	// registerStudent = async (data) => {
-	// 	return this.studentService.register(data);
-	// };
+	logoutAll = async (refreshToken) => {
+		const { refreshId } = this.jwtService.verifyToken(refreshToken);
+		if (!refreshId) return;
 
-	// loginStudent = async (data) => {
-	// 	return this.studentService.login(data);
-	// };
+		const userId = grabUserIdFromAuthId(refreshId);
+		const patterns = [`refresh:${userId}-*`, `auth:${userId}-*`];
+
+		for (const pattern of patterns) {
+			let cursor = "0";
+
+			do {
+				const [nextCursor, keys] = await this.cacheService.redis.scan(
+					cursor,
+					"MATCH",
+					pattern,
+					"COUNT",
+					100,
+				);
+				cursor = nextCursor;
+
+				if (keys.length > 0) {
+					await this.cacheService.redis.del(...keys);
+				}
+			} while (cursor !== "0");
+		}
+	};
 
 	verifyEmail = async (data, otpCode) => {
-		const {
-			authId,
-			userType,
-			otpId,
-			firstName,
-			lastName,
-			email,
-			action,
-			...rest
-		} = data;
+		const { authId, userType, otpId, action, ...rest } = data;
 
 		const otp = await this.cacheService.get(otpId);
 
+		if (!action) throwBadRequestError("Invalid request action.");
 		if (!otp) throwBadRequestError("Invalid or expired verification link.");
 
 		if (this.encryptionService.decrypt(otp.otp) !== otpCode)
@@ -125,78 +150,72 @@ export class AuthService {
 
 		let user;
 
-		if (action) {
-			if (action === JwtAction.VERIFY_EMAIL) {
-				switch (userType) {
-					case UserTypes.INSTRUCTOR: {
-						const instructor = await this.instructorModel.create({
-							firstName,
-							lastName,
-							email,
-						});
+		if (action === JwtAction.VERIFY_EMAIL) {
+			const { firstName, lastName, email, password } = rest;
+			switch (userType) {
+				case UserTypes.INSTRUCTOR: {
+					const instructor = await this.instructorModel.create({
+						firstName,
+						lastName,
+						email,
+					});
 
-						console.log(this.encryptionService.decrypt(rest.password));
-						await instructor.setPassword(
-							this.encryptionService.decrypt(rest.password),
-						);
-						user = instructor;
-						break;
-					}
-					case UserTypes.PARENT: {
-						const parent = await this.parentModel.create({
-							firstName,
-							lastName,
-							email,
-						});
-
-						console.log(this.encryptionService.decrypt(rest.password));
-						await parent.setPassword(
-							this.encryptionService.decrypt(rest.password),
-						);
-						user = parent;
-						break;
-					}
-					case UserTypes.STUDENT: {
-						const student = await this.studentModel.create({
-							firstName,
-							lastName,
-							email,
-						});
-
-						console.log(this.encryptionService.decrypt(rest.password));
-						await student.setPassword(
-							this.encryptionService.decrypt(rest.password),
-						);
-						user = student;
-						break;
-					}
-					default:
-						throwUnauthorizedError("Invalid user type.");
+					console.log(this.encryptionService.decrypt(password));
+					await instructor.setPassword(
+						this.encryptionService.decrypt(password),
+					);
+					user = instructor;
+					break;
 				}
+				case UserTypes.PARENT: {
+					const parent = await this.parentModel.create({
+						firstName,
+						lastName,
+						email,
+					});
 
-				user.emailVerified = true;
-				user.emailVerifiedAt = new Date();
-				user.lastLoginAt = new Date();
-			} else if (action === JwtAction.AUTHENTICATE) {
-				switch (userType) {
-					case UserTypes.INSTRUCTOR:
-						user = await getInstructorByEmail(email);
-						user.lastLoginAt = new Date();
-						break;
-					case UserTypes.PARENT:
-						user = await getParentByEmail(email);
-						user.lastLoginAt = new Date();
-						break;
-					case UserTypes.STUDENT:
-						user = await getStudentByEmail(email);
-						user.lastLoginAt = new Date();
-						break;
-					default:
-						throwUnauthorizedError("Invalid user type.");
+					console.log(this.encryptionService.decrypt(password));
+					await parent.setPassword(this.encryptionService.decrypt(password));
+					user = parent;
+					break;
 				}
+				case UserTypes.STUDENT: {
+					const student = await this.studentModel.create({
+						firstName,
+						lastName,
+						email,
+					});
+
+					console.log(this.encryptionService.decrypt(password));
+					await student.setPassword(this.encryptionService.decrypt(password));
+					user = student;
+					break;
+				}
+				default:
+					throwUnauthorizedError("Invalid user type.");
 			}
-		} else {
-			throwUnauthorizedError("No action found.");
+
+			user.emailVerified = true;
+			user.emailVerifiedAt = new Date();
+			user.lastLoginAt = new Date();
+		} else if (action === JwtAction.AUTHENTICATE) {
+			const { email } = rest;
+			switch (userType) {
+				case UserTypes.INSTRUCTOR:
+					user = await getInstructorByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				case UserTypes.PARENT:
+					user = await getParentByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				case UserTypes.STUDENT:
+					user = await getStudentByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				default:
+					throwUnauthorizedError("Invalid user type.");
+			}
 		}
 
 		const savedData = await user.save();
@@ -215,11 +234,11 @@ export class AuthService {
 				},
 			});
 
-		await this.cacheService.deleteMany([authId, otpId]);
+		await this.cacheService.delete(otpId);
+		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
+		const gen_tokens = await generateAuthTokens(authId);
 
-		const token = this.jwtService.generateToken(authId);
-
-		return { token, user };
+		return { user, ...gen_tokens };
 	};
 
 	/** @info - OAuth */

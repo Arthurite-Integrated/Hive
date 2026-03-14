@@ -26,7 +26,9 @@ vi.mock("@aws-sdk/client-s3", () => {
 	};
 });
 
-const mockGetSignedUrl = vi.fn().mockResolvedValue("https://s3.presigned.url/test");
+const mockGetSignedUrl = vi
+	.fn()
+	.mockResolvedValue("https://s3.presigned.url/test");
 vi.mock("@aws-sdk/s3-request-presigner", () => ({
 	getSignedUrl: mockGetSignedUrl,
 }));

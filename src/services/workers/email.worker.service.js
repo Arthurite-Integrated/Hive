@@ -1,8 +1,8 @@
 import { Worker } from "bullmq";
-import { getBullMQRedisClient } from "#connection/bullmq.redis.connection";
 import { QueueNames } from "#enums/queue/index";
 import { EmailService } from "#services/mail.service";
 import { logger } from "#utils/logger";
+import { CacheService } from "#services/cache.service";
 
 export class EmailWorkerService {
 	static instance = null;
@@ -17,7 +17,8 @@ export class EmailWorkerService {
 
 	constructor(concurrency = 10) {
 		this.emailService = EmailService.getInstance();
-		const redisClient = getBullMQRedisClient();
+		this.cacheService = CacheService.getInstance();
+
 		this.worker = new Worker(
 			QueueNames.EMAIL,
 			async (job) => {
@@ -41,7 +42,7 @@ export class EmailWorkerService {
 			},
 			{
 				concurrency,
-				connection: redisClient,
+				connection: this.cacheService.redis,
 				lockDuration: 60000, // 60 seconds - how long a job can be processed before considered stalled
 				maxStalledCount: 1, // Max times a job can be retried if stalled
 				removeOnComplete: {

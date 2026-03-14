@@ -47,3 +47,7 @@ export const signupSchema = z.object({
 		})
 		.optional(),
 });
+
+export const refreshTokenSchema = z.object({
+	refreshToken: z.string(),
+});

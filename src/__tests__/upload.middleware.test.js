@@ -78,7 +78,9 @@ describe("Upload Middleware", () => {
 		});
 
 		it("uploadAssignment should accept custom MIME types as a Set", () => {
-			expect(typeof uploadAssignment(new Set(["application/pdf"]))).toBe("function");
+			expect(typeof uploadAssignment(new Set(["application/pdf"]))).toBe(
+				"function",
+			);
 		});
 
 		it("uploadAssignment should accept custom MIME types as an array", () => {
@@ -113,8 +115,14 @@ describe("Upload Middleware", () => {
 
 		it("should use MIME-derived extension even if originalname has a different one", async () => {
 			// Attacker sends file named "malware.exe" but declares image/png
-			mockFileTypeFromBuffer.mockResolvedValue({ mime: "image/png", ext: "png" });
-			const file = createMockFile({ originalname: "malware.exe", mimetype: "image/png" });
+			mockFileTypeFromBuffer.mockResolvedValue({
+				mime: "image/png",
+				ext: "png",
+			});
+			const file = createMockFile({
+				originalname: "malware.exe",
+				mimetype: "image/png",
+			});
 			const req = { file, files: null };
 			const next = vi.fn();
 
@@ -128,8 +136,14 @@ describe("Upload Middleware", () => {
 
 		it("should reject files where actual content doesn't match allowed types", async () => {
 			// file-type detects it as application/x-executable, not an allowed type
-			mockFileTypeFromBuffer.mockResolvedValue({ mime: "application/x-executable", ext: "exe" });
-			const file = createMockFile({ originalname: "virus.png", mimetype: "image/png" });
+			mockFileTypeFromBuffer.mockResolvedValue({
+				mime: "application/x-executable",
+				ext: "exe",
+			});
+			const file = createMockFile({
+				originalname: "virus.png",
+				mimetype: "image/png",
+			});
 			const req = { file, files: null };
 			const next = vi.fn();
 
@@ -137,9 +151,11 @@ describe("Upload Middleware", () => {
 			await middleware(req, {}, next);
 
 			expect(mockUpload).not.toHaveBeenCalled();
-			expect(next).toHaveBeenCalledWith(expect.objectContaining({
-				message: expect.stringContaining("does not match"),
-			}));
+			expect(next).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining("does not match"),
+				}),
+			);
 		});
 
 		it("should reject zero-byte files", async () => {
@@ -151,21 +167,37 @@ describe("Upload Middleware", () => {
 			await middleware(req, {}, next);
 
 			expect(mockUpload).not.toHaveBeenCalled();
-			expect(next).toHaveBeenCalledWith(expect.objectContaining({
-				message: expect.stringContaining("Empty files"),
-			}));
+			expect(next).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message: expect.stringContaining("Empty files"),
+				}),
+			);
 		});
 
 		it("should upload multiple files and attach array to req.s3", async () => {
-			mockFileTypeFromBuffer.mockResolvedValue({ mime: "application/pdf", ext: "pdf" });
+			mockFileTypeFromBuffer.mockResolvedValue({
+				mime: "application/pdf",
+				ext: "pdf",
+			});
 			const files = [
-				createMockFile({ fieldname: "assignments", originalname: "hw1.pdf", mimetype: "application/pdf" }),
-				createMockFile({ fieldname: "assignments", originalname: "hw2.pdf", mimetype: "application/pdf" }),
+				createMockFile({
+					fieldname: "assignments",
+					originalname: "hw1.pdf",
+					mimetype: "application/pdf",
+				}),
+				createMockFile({
+					fieldname: "assignments",
+					originalname: "hw2.pdf",
+					mimetype: "application/pdf",
+				}),
 			];
 			const req = { file: null, files };
 			const next = vi.fn();
 
-			const middleware = uploadToS3("assignments", new Set(["application/pdf"]));
+			const middleware = uploadToS3(
+				"assignments",
+				new Set(["application/pdf"]),
+			);
 			await middleware(req, {}, next);
 
 			expect(mockUpload).toHaveBeenCalledTimes(2);
@@ -205,7 +237,10 @@ describe("Upload Middleware", () => {
 		it("should trust multer filter when file-type cannot detect the format", async () => {
 			// file-type returns null (e.g. some PDFs, DOCX)
 			mockFileTypeFromBuffer.mockResolvedValue(null);
-			const file = createMockFile({ mimetype: "application/pdf", originalname: "report.pdf" });
+			const file = createMockFile({
+				mimetype: "application/pdf",
+				originalname: "report.pdf",
+			});
 			const req = { file, files: null };
 			const next = vi.fn();
 
@@ -282,12 +317,18 @@ describe("Upload Middleware", () => {
 		});
 
 		it("should throw BadRequest for null/undefined key", () => {
-			expect(() => validateVideoUploadKey(null, "videos")).toThrow(/Invalid upload key/);
-			expect(() => validateVideoUploadKey(undefined, "videos")).toThrow(/Invalid upload key/);
+			expect(() => validateVideoUploadKey(null, "videos")).toThrow(
+				/Invalid upload key/,
+			);
+			expect(() => validateVideoUploadKey(undefined, "videos")).toThrow(
+				/Invalid upload key/,
+			);
 		});
 
 		it("should throw BadRequest for empty string key", () => {
-			expect(() => validateVideoUploadKey("", "videos")).toThrow(/Invalid upload key/);
+			expect(() => validateVideoUploadKey("", "videos")).toThrow(
+				/Invalid upload key/,
+			);
 		});
 	});
 });
