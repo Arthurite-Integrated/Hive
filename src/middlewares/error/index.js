@@ -82,7 +82,19 @@ export const errorHandler = (err, _req, res, _next) => {
 
 	if (err && err.name === "MulterError") {
 		errorObject.status = StatusCodes.UNPROCESSABLE_ENTITY;
-		errorObject.message = `${err?.message} ${err.field}`;
+		switch (err.code) {
+			case "LIMIT_FILE_SIZE":
+				errorObject.message = `File "${err.field}" exceeds the maximum allowed size`;
+				break;
+			case "LIMIT_FILE_COUNT":
+				errorObject.message = `Too many files uploaded for "${err.field}"`;
+				break;
+			case "LIMIT_UNEXPECTED_FILE":
+				errorObject.message = `Unexpected file field "${err.field}"`;
+				break;
+			default:
+				errorObject.message = `${err?.message} ${err.field}`;
+		}
 	}
 
 	const status = errorObject?.status || StatusCodes.INTERNAL_SERVER_ERROR;

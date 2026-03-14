@@ -61,5 +61,12 @@ export const config = {
 		apiKey: env.RESEND_API_KEY,
 		email: env.RESEND_EMAIL,
 	},
+	s3: {
+		region: env.AWS_REGION,
+		accessKeyId: env.AWS_ACCESS_KEY_ID,
+		secretAccessKey: env.AWS_SECRET_ACCESS_KEY,
+		bucket: env.AWS_S3_BUCKET,
+		endpoint: env.AWS_S3_ENDPOINT,
+	},
 	env: env.NODE_ENV,
 };
