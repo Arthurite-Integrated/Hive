@@ -1,6 +1,7 @@
-import redis from "redis";
+import Redis from "ioredis";
 import { config } from "#config/config";
 import { TTL } from "#constants/ttl.constant";
+import { logger } from "#utils/logger";
 
 export class CacheService {
 	static instance = null;
@@ -18,16 +19,25 @@ export class CacheService {
 	 * @info - Please always use .getInstance() to get the instance of the CacheService.
 	 * */
 	constructor() {
-		this.redis = redis.createClient({
-			url: config.redis.uri,
+		this.redis = new Redis(config.redis.uri, {
+			maxRetriesPerRequest: null,
+			enableReadyCheck: false,
 		});
+		this.listen();
 	}
 
-	connectToRedis = async () => {
-		await this.redis.connect();
+	/** @info - Just to listen to connected events */
+	listen = async () => {
+		this.redis.on("connect", () => {
+			logger.info("Connected to Redis 🗑️");
+		});
+
+		this.redis.on("error", (error) => {
+			logger.error("Redis connection error", error);
+		});
 	};
 
-	/** @returns {redis.RedisClient} */
+	/** @returns {Redis} */
 	static getRedisClient = () => {
 		const redis = CacheService.getInstance();
 		return redis.redis;
@@ -35,7 +45,7 @@ export class CacheService {
 
 	set = async (key, value, ttl = TTL.IN_30_MINUTES) => {
 		console.log(`value: ${JSON.stringify(value, null, 2)}`);
-		await this.redis.set(key, JSON.stringify(value), { EX: ttl });
+		await this.redis.set(key, JSON.stringify(value), "EX", ttl);
 	};
 
 	get = async (key) => {
@@ -50,14 +60,14 @@ export class CacheService {
 	deleteMany = async (keys) => {
 		keys = Array.isArray(keys) ? keys : [keys];
 		if (keys.length === 0) return;
-		await this.redis.del(keys);
+		await this.redis.del(...keys);
 	};
 
 	disconnect = async () => {
-		await this.redis.disconnect();
+		await this.redis.quit();
 	};
 
 	flush = async () => {
-		await this.redis.flushAll();
+		await this.redis.flushall();
 	};
 }

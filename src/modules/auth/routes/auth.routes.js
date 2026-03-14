@@ -36,6 +36,18 @@ authRouter.post(
 	authController.refreshToken,
 );
 
+authRouter.post(
+	"/logout",
+	zodEngine.validate.body(refreshTokenSchema),
+	authController.logout,
+);
+
+authRouter.post(
+	"/logout-all",
+	zodEngine.validate.body(refreshTokenSchema),
+	authController.logoutAll,
+);
+
 /** @info - OAuth */
 authRouter.use("/google", googleRouter);
 authRouter.use("/facebook", facebookRouter);

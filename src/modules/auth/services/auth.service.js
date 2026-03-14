@@ -4,7 +4,9 @@ import { UserTypes } from "#enums/user.enums";
 import {
 	generateAuthenticatedData,
 	generateAuthTokens,
+	grabUserIdFromAuthId,
 } from "#helpers/auth/index";
+import { TTL } from "#constants/ttl.constant";
 import {
 	throwBadRequestError,
 	throwUnauthorizedError,
@@ -94,6 +96,45 @@ export class AuthService {
 
 		const token = await generateAuthTokens(authId);
 		return token;
+	};
+
+	/**
+	 * @info - Delete's refresh token from redis so the user wouldn't be able to use it to generate new access tokens. Effectively logs the user out.
+	 * @param {string} refreshToken - The refresh token to be invalidated.
+	 * @param {*} refreshToken
+	 */
+	logout = async (refreshToken) => {
+		const { refreshId, authId } = this.jwtService.verifyToken(refreshToken);
+		if (refreshId) {
+			await this.cacheService.deleteMany([refreshId, authId]);
+		}
+	};
+
+	logoutAll = async (refreshToken) => {
+		const { refreshId } = this.jwtService.verifyToken(refreshToken);
+		if (!refreshId) return;
+
+		const userId = grabUserIdFromAuthId(refreshId);
+		const patterns = [`refresh:${userId}-*`, `auth:${userId}-*`];
+
+		for (const pattern of patterns) {
+			let cursor = "0";
+
+			do {
+				const [nextCursor, keys] = await this.cacheService.redis.scan(
+					cursor,
+					"MATCH",
+					pattern,
+					"COUNT",
+					100,
+				);
+				cursor = nextCursor;
+
+				if (keys.length > 0) {
+					await this.cacheService.redis.del(...keys);
+				}
+			} while (cursor !== "0");
+		}
 	};
 
 	verifyEmail = async (data, otpCode) => {
@@ -193,11 +234,11 @@ export class AuthService {
 				},
 			});
 
-		await this.cacheService.deleteMany([authId, otpId]);
+		await this.cacheService.delete(otpId);
+		await this.cacheService.set(authId, user, TTL.IN_30_MINUTES);
+		const gen_tokens = await generateAuthTokens(authId);
 
-		const token = this.jwtService.generateToken(authId);
-
-		return { token, user };
+		return { user, ...gen_tokens };
 	};
 
 	/** @info - OAuth */

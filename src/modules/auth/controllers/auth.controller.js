@@ -57,6 +57,28 @@ export class AuthController {
 		);
 	};
 
+	logout = async (req, res) => {
+		await this.authService.logout(req.body.refreshToken);
+		return sendSuccessResponse(
+			res,
+			{
+				message: "Logged out successfully",
+			},
+			StatusCodes.OK,
+		);
+	};
+
+	logoutAll = async (req, res) => {
+		await this.authService.logoutAll(req.body.refreshToken);
+		return sendSuccessResponse(
+			res,
+			{
+				message: "Logged out of all accounts successfully",
+			},
+			StatusCodes.OK,
+		);
+	};
+
 	verifyEmail = async (req, res) => {
 		const data = await this.authService.verifyEmail(req.authData, req.body.otp);
 		return sendSuccessResponse(

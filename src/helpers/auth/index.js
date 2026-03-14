@@ -54,8 +54,10 @@ export const generateAuthenticatedData = (modelData) => {
 };
 
 export const generateAuthTokens = async (authId) => {
+	const userId = grabUserIdFromAuthId(authId);
+
 	/** @info - Generate & store Refresh Token key */
-	const refreshId = generateRefreshTokenId();
+	const refreshId = generateRefreshTokenId(userId);
 	const refreshToken = jwtService.generateTokenFromPayload(
 		{
 			authId,
@@ -67,4 +69,8 @@ export const generateAuthTokens = async (authId) => {
 
 	const accessToken = jwtService.generateToken(authId);
 	return { accessToken, refreshToken };
+};
+
+export const grabUserIdFromAuthId = (authId) => {
+	return authId.split(":")[1].split("-")[0];
 };
