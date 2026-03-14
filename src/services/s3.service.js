@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { config } from "#config/config";
+import { TTL } from "#constants/ttl.constant";
 
 export class S3Service {
 	static instance = null;
@@ -60,13 +61,13 @@ export class S3Service {
 	 * @param {Object} params
 	 * @param {string} params.key - The S3 object key (path)
 	 * @param {string} params.contentType - The expected MIME type
-	 * @param {number} [params.expiresIn=3600] - URL expiration in seconds (default 1 hour)
+	 * @param {number} [params.expiresIn=TTL.IN_AN_HOUR] - URL expiration in seconds (default 1 hour)
 	 * @returns {Promise<{ url: string, key: string, bucket: string }>}
 	 */
 	generatePresignedUploadUrl = async ({
 		key,
 		contentType,
-		expiresIn = 3600,
+		expiresIn = TTL.IN_AN_HOUR,
 	}) => {
 		const command = new PutObjectCommand({
 			Bucket: this.bucket,
@@ -83,10 +84,10 @@ export class S3Service {
 	 * @info - Generate a presigned URL for downloading/viewing a file from S3
 	 * @param {Object} params
 	 * @param {string} params.key - The S3 object key (path)
-	 * @param {number} [params.expiresIn=3600] - URL expiration in seconds (default 1 hour)
+	 * @param {number} [params.expiresIn=TTL.IN_AN_HOUR] - URL expiration in seconds (default 1 hour)
 	 * @returns {Promise<string>} - The presigned download URL
 	 */
-	generatePresignedDownloadUrl = async ({ key, expiresIn = 3600 }) => {
+	generatePresignedDownloadUrl = async ({ key, expiresIn = TTL.IN_AN_HOUR }) => {
 		const command = new GetObjectCommand({
 			Bucket: this.bucket,
 			Key: key,
