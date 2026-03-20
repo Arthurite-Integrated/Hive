@@ -149,7 +149,7 @@ export class AuthService {
 				TTL.IN_10_MINUTES,
 			);
 
-			const resetLink = `${config.server.rootDomain}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+			const resetLink = `${config.server.rootDomain}/reset-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}&userType=${encodeURIComponent(userType)}`;
 
 			await this.emailQueueService.add(EmailJobNames.RESET_PASSWORD, {
 				message: {
