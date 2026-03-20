@@ -51,3 +51,30 @@ export const signupSchema = z.object({
 export const refreshTokenSchema = z.object({
 	refreshToken: z.string(),
 });
+
+export const forgotPasswordSchema = z.object({
+	email: z.email(),
+	userType: z.enum([UserTypes.INSTRUCTOR, UserTypes.PARENT, UserTypes.STUDENT]),
+});
+
+export const resetPasswordSchema = z.object({
+	email: z.email(),
+	token: z.string().min(1),
+	newPassword: z
+		.string()
+		.min(8, { message: "Password must be at least 8 characters" })
+		.max(100, { message: "Password must be at most 100 characters" })
+		.refine((value) => /[a-z]/.test(value), {
+			message: "Password must contain at least one lowercase letter",
+		})
+		.refine((value) => /[A-Z]/.test(value), {
+			message: "Password must contain at least one uppercase letter",
+		})
+		.refine((value) => /\d/.test(value), {
+			message: "Password must contain at least one number",
+		})
+		.refine((value) => /[\W_]/.test(value), {
+			message: "Password must contain at least one special character",
+		}),
+	userType: z.enum([UserTypes.INSTRUCTOR, UserTypes.PARENT, UserTypes.STUDENT]),
+});
