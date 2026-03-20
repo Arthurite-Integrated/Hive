@@ -79,6 +79,22 @@ export class AuthController {
 		);
 	};
 
+	forgotPassword = async (req, res) => {
+		await this.authService.forgotPassword(req.body);
+		return sendSuccessResponse(res, {
+			message:
+				"If an account with that email exists, we've sent a password reset link.",
+		});
+	};
+
+	resetPassword = async (req, res) => {
+		await this.authService.resetPassword(req.body);
+		return sendSuccessResponse(res, {
+			message:
+				"Password reset successfully. Please log in with your new password.",
+		});
+	};
+
 	verifyEmail = async (req, res) => {
 		const data = await this.authService.verifyEmail(req.authData, req.body.otp);
 		return sendSuccessResponse(
