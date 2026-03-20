@@ -1,11 +1,15 @@
-import { JwtAction } from "#enums/auth/index";
+import { timingSafeEqual } from "crypto";
+import { JwtAction, AuthMethods } from "#enums/auth/index";
 import { EmailJobNames } from "#enums/queue/index";
 import { UserTypes } from "#enums/user.enums";
 import {
 	generateAuthenticatedData,
 	generateAuthTokens,
+	generateResetToken,
 	grabUserIdFromAuthId,
+	hashResetToken,
 } from "#helpers/auth/index";
+import { config } from "#config/config";
 import { TTL } from "#constants/ttl.constant";
 import {
 	throwBadRequestError,
@@ -116,6 +120,98 @@ export class AuthService {
 
 		const userId = grabUserIdFromAuthId(refreshId);
 		await this.cacheService.invalidateAllUserSessions(userId);
+	};
+
+	forgotPassword = async ({ email, userType }) => {
+		let user = null;
+
+		switch (userType) {
+			case UserTypes.INSTRUCTOR:
+				user = await this.instructorModel.findOne({ email });
+				break;
+			case UserTypes.PARENT:
+				user = await this.parentModel.findOne({ email });
+				break;
+			case UserTypes.STUDENT:
+				user = await this.studentModel.findOne({ email });
+				break;
+			default:
+				break;
+		}
+
+		if (user && user.authMethod === AuthMethods.EMAIL) {
+			const token = generateResetToken();
+			const tokenHash = hashResetToken(token);
+
+			await this.cacheService.set(
+				`reset-token:${userType}:${email}`,
+				tokenHash,
+				TTL.IN_10_MINUTES,
+			);
+
+			const resetLink = `${config.server.rootDomain}/reset-password?token=${token}&email=${encodeURIComponent(email)}`;
+
+			await this.emailQueueService.add(EmailJobNames.RESET_PASSWORD, {
+				message: {
+					to: user.email,
+					subject: "Reset your Hive password",
+				},
+				template: "reset-password",
+				locals: {
+					name: user.firstName,
+					resetLink,
+					expiryMinutes: "10",
+				},
+			});
+		}
+	};
+
+	resetPassword = async ({ email, token, newPassword, userType }) => {
+		const storedHash = await this.cacheService.get(
+			`reset-token:${userType}:${email}`,
+		);
+
+		if (!storedHash) {
+			throwBadRequestError("Invalid or expired reset token.");
+		}
+
+		const submittedHash = hashResetToken(token);
+
+		const storedBuffer = Buffer.from(storedHash, "hex");
+		const submittedBuffer = Buffer.from(submittedHash, "hex");
+
+		if (
+			storedBuffer.length !== submittedBuffer.length ||
+			!timingSafeEqual(storedBuffer, submittedBuffer)
+		) {
+			throwBadRequestError("Invalid or expired reset token.");
+		}
+
+		let user = null;
+
+		switch (userType) {
+			case UserTypes.INSTRUCTOR:
+				user = await this.instructorModel.findOne({ email });
+				break;
+			case UserTypes.PARENT:
+				user = await this.parentModel.findOne({ email });
+				break;
+			case UserTypes.STUDENT:
+				user = await this.studentModel.findOne({ email });
+				break;
+			default:
+				break;
+		}
+
+		if (!user) {
+			throwBadRequestError("Invalid or expired reset token.");
+		}
+
+		await user.setPassword(newPassword);
+		await user.save();
+
+		await this.cacheService.delete(`reset-token:${userType}:${email}`);
+		await this.cacheService.invalidateAllUserSessions(user._id.toString());
 	};
 
 	verifyEmail = async (data, otpCode) => {
