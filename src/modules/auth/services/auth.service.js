@@ -115,26 +115,7 @@ export class AuthService {
 		if (!refreshId) return;
 
 		const userId = grabUserIdFromAuthId(refreshId);
-		const patterns = [`refresh:${userId}-*`, `auth:${userId}-*`];
-
-		for (const pattern of patterns) {
-			let cursor = "0";
-
-			do {
-				const [nextCursor, keys] = await this.cacheService.redis.scan(
-					cursor,
-					"MATCH",
-					pattern,
-					"COUNT",
-					100,
-				);
-				cursor = nextCursor;
-
-				if (keys.length > 0) {
-					await this.cacheService.redis.del(...keys);
-				}
-			} while (cursor !== "0");
-		}
+		await this.cacheService.invalidateAllUserSessions(userId);
 	};
 
 	verifyEmail = async (data, otpCode) => {
