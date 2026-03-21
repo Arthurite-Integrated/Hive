@@ -70,4 +70,27 @@ export class CacheService {
 	flush = async () => {
 		await this.redis.flushall();
 	};
+
+	invalidateAllUserSessions = async (userId) => {
+		const patterns = [`refresh:${userId}-*`, `auth:${userId}-*`];
+
+		for (const pattern of patterns) {
+			let cursor = "0";
+
+			do {
+				const [nextCursor, keys] = await this.redis.scan(
+					cursor,
+					"MATCH",
+					pattern,
+					"COUNT",
+					100,
+				);
+				cursor = nextCursor;
+
+				if (keys.length > 0) {
+					await this.redis.del(...keys);
+				}
+			} while (cursor !== "0");
+		}
+	};
 }

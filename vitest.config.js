@@ -12,6 +12,8 @@ export default defineConfig({
 			"#utils": path.resolve("src/utils"),
 			"#constants": path.resolve("src/constants"),
 			"#enums": path.resolve("src/enums"),
+			"#modules": path.resolve("src/modules"),
+			"#validator": path.resolve("src/validator"),
 		},
 	},
 	test: {

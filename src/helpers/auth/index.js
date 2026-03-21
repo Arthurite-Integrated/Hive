@@ -1,5 +1,5 @@
 import axios from "axios";
-import { webcrypto } from "crypto";
+import { webcrypto, createHash } from "crypto";
 import _ from "lodash";
 import { v4 } from "uuid";
 import { JwtService } from "#services/jwt.service";
@@ -23,6 +23,15 @@ export const generateOTPId = () => {
 
 export const generateRefreshTokenId = (userId = null) => {
 	return `refresh:${userId || v4()}-${Date.now()}`;
+};
+
+export const generateResetToken = () => {
+	const bytes = webcrypto.getRandomValues(new Uint8Array(32));
+	return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+};
+
+export const hashResetToken = (token) => {
+	return createHash("sha256").update(token).digest("hex");
 };
 
 export const getLocationFromIP = async (ip) => {
