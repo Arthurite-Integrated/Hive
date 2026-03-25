@@ -1,6 +1,7 @@
 import Router from "express";
 import { JwtService } from "#services/jwt.service";
 import { ZodEngine } from "#validator/engine/zod.engine";
+import { changePasswordSchema } from "#validator/user/change-password.schema";
 import { updateProfileSchema } from "#validator/user/update-profile.schema";
 import { ParentController } from "./parent.controller.js";
 
@@ -17,4 +18,9 @@ parentRouter.patch(
 	"/me",
 	zodEngine.validate.body(updateProfileSchema),
 	controller.update,
+);
+parentRouter.patch(
+	"/me/password",
+	zodEngine.validate.body(changePasswordSchema),
+	controller.updatePassword,
 );

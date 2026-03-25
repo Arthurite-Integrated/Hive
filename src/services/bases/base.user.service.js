@@ -228,13 +228,34 @@ export class BaseUserService {
 		const user = await this.dbModel.findById(authData._id);
 		if (!user) throwNotFoundError("User not found");
 
-		/** @info - Validates password if true or not */
 		const isPasswordValid = await user.validatePassword(oldPassword);
-		if (!isPasswordValid) throwBadRequestError("Invalid old password");
+		if (!isPasswordValid) throwBadRequestError("Invalid current password");
 
-		user.password = this.encryptionService.encrypt(newPassword);
+		await user.setPassword(newPassword);
+		await user.save();
 
-		return await user.save();
+		await this.#invalidateAllTokens(authData._id);
+	};
+
+	#invalidateAllTokens = async (userId) => {
+		const patterns = [`refresh:${userId}-*`, `auth:${userId}-*`];
+
+		for (const pattern of patterns) {
+			let cursor = "0";
+			do {
+				const [nextCursor, keys] = await this.cacheService.redis.scan(
+					cursor,
+					"MATCH",
+					pattern,
+					"COUNT",
+					100,
+				);
+				cursor = nextCursor;
+				if (keys.length > 0) {
+					await this.cacheService.redis.del(...keys);
+				}
+			} while (cursor !== "0");
+		}
 	};
 
 	updateAvatar = async (authData, avatarUrl) => {

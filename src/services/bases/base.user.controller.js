@@ -27,15 +27,15 @@ export class BaseUserController {
 	};
 
 	updatePassword = async (req, res) => {
-		const { oldPassword, newPassword } = req.body;
-		const data = await this.service.updatePassword(
+		const { currentPassword, newPassword } = req.body;
+		await this.service.updatePassword(
 			req.authData,
-			oldPassword,
+			currentPassword,
 			newPassword,
 		);
 		return sendSuccessResponse(res, {
-			message: `${this.#pascalize()} password updated successfully`,
-			data,
+			message:
+				"Password updated successfully. All other sessions have been logged out.",
 		});
 	};
 
