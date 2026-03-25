@@ -12,8 +12,10 @@ export class InstructorService extends BaseUserService {
 		"subjects",
 		"gradeLevels",
 		"preferredTeachingMode",
+		"specialization",
 		"bio",
 		"phone",
+		"preferences",
 		"location",
 	];
 

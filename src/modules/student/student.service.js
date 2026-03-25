@@ -17,4 +17,8 @@ export class StudentService extends BaseUserService {
 	constructor() {
 		super(UserTypes.STUDENT, Student);
 	}
+
+	onboard = async (authData, data) => {
+		return super.onboard(authData, data, ["interests"]);
+	};
 }

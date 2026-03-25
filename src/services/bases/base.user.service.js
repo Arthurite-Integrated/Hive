@@ -271,6 +271,25 @@ export class BaseUserService {
 		);
 	};
 
+	onboard = async (authData, data, extraFields = []) => {
+		const ALLOWED_FIELDS = ["bio", "preferences", ...extraFields];
+
+		const filtered = Object.fromEntries(
+			Object.entries(data).filter(([key]) => ALLOWED_FIELDS.includes(key)),
+		);
+
+		const user = await this.dbModel
+			.findByIdAndUpdate(
+				authData._id,
+				{ ...filtered, onboarded: true },
+				{ new: true, runValidators: true },
+			)
+			.select("-salt -hash -mfaSecret -mfaRecoveryCodes");
+
+		if (!user) throwNotFoundError("User not found");
+		return user;
+	};
+
 	delete = async (authData) => {
 		const user = await this.dbModel.findByIdAndUpdate(
 			authData._id,

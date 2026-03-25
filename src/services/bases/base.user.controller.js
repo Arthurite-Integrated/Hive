@@ -46,6 +46,14 @@ export class BaseUserController {
 		});
 	};
 
+	onboard = async (req, res) => {
+		const data = await this.service.onboard(req.authData, req.body);
+		return sendSuccessResponse(res, {
+			message: `${this.#pascalize()} onboarded successfully`,
+			data,
+		});
+	};
+
 	delete = async (req, res) => {
 		await this.service.delete(req.authData);
 		return sendSuccessResponse(res, {

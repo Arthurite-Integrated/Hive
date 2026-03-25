@@ -6,6 +6,11 @@ const collectionName = ModelCollections.STUDENT;
 const StudentSchema = BaseUserSchema.clone();
 
 StudentSchema.add({
+	interests: {
+		type: [String],
+		required: false,
+	},
+
 	/* Parent Relationship fields */
 	linkedParent: {
 		type: Schema.Types.ObjectId,
