@@ -86,6 +86,11 @@ export const BaseUserSchema = new Schema(
 			default: false,
 		},
 
+		preferences: {
+			type: Schema.Types.Mixed,
+			default: {},
+		},
+
 		/** @info - Onboarding */
 		onboarded: {
 			type: Boolean,

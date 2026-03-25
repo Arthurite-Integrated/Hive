@@ -1,12 +1,20 @@
 import Router from "express";
 import { JwtService } from "#services/jwt.service";
+import { ZodEngine } from "#validator/engine/zod.engine";
+import { updateProfileSchema } from "#validator/user/update-profile.schema";
 import { ParentController } from "./parent.controller.js";
 
 export const parentRouter = Router();
 const jwtService = JwtService.getInstance();
+const zodEngine = ZodEngine.getInstance();
 
 const controller = ParentController.getInstance();
 
 parentRouter.use(jwtService.validateToken);
 
 parentRouter.get("/me", controller.getProfile);
+parentRouter.patch(
+	"/me",
+	zodEngine.validate.body(updateProfileSchema),
+	controller.update,
+);

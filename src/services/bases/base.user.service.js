@@ -203,9 +203,9 @@ export class BaseUserService {
 		const ALLOWED_FIELDS = [
 			"firstName",
 			"lastName",
-			"email",
 			"phone",
 			"bio",
+			"preferences",
 			...extraFields,
 		];
 
@@ -213,10 +213,12 @@ export class BaseUserService {
 			Object.entries(data).filter(([key]) => ALLOWED_FIELDS.includes(key)),
 		);
 
-		const user = await this.dbModel.findByIdAndUpdate(authData._id, filtered, {
-			new: true,
-			runValidators: true,
-		});
+		const user = await this.dbModel
+			.findByIdAndUpdate(authData._id, filtered, {
+				new: true,
+				runValidators: true,
+			})
+			.select("-salt -hash -mfaSecret -mfaRecoveryCodes");
 
 		if (!user) throwNotFoundError("User not found");
 		return user;

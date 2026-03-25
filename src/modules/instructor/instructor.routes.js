@@ -1,6 +1,7 @@
 import Router from "express";
 import { JwtService } from "#services/jwt.service";
 import { ZodEngine } from "#validator/engine/zod.engine";
+import { updateProfileSchema } from "#validator/user/update-profile.schema";
 import { InstructorController } from "./instructor.controller.js";
 import { instructorOnboardSchema } from "./validator/schema.js";
 
@@ -13,6 +14,11 @@ const controller = InstructorController.getInstance();
 instructorRouter.use(jwtService.validateToken);
 
 instructorRouter.get("/me", controller.getProfile);
+instructorRouter.patch(
+	"/me",
+	zodEngine.validate.body(updateProfileSchema),
+	controller.update,
+);
 
 instructorRouter.use(
 	"/onboard",

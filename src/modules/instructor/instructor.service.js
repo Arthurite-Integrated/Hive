@@ -31,6 +31,10 @@ export class InstructorService extends BaseUserService {
 		this.location = Location;
 	}
 
+	update = async (authData, data) => {
+		return super.update(authData, data, ["specialization"]);
+	};
+
 	/** @info - Instructor onboarding */
 	onboard = async (authData, data) => {
 		const update = _.pick(data, this.onboardFields);

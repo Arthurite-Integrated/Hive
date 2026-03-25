@@ -34,6 +34,11 @@ InstructorSchema.add({
 		default: "online",
 		lowercase: true,
 	},
+
+	specialization: {
+		type: String,
+		required: false,
+	},
 });
 
 InstructorSchema.virtual("fullName").get(function () {
