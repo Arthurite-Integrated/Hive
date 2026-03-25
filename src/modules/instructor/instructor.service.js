@@ -37,32 +37,40 @@ export class InstructorService extends BaseUserService {
 
 		let location;
 		try {
-			location = await this.location.create({
-				address: data.location.address,
-				city: data.location.city,
-				state: data.location.state,
-				country: data.location.country,
-				zipCode: data.location.zipCode,
-				accountId: authData._id, // The Instructors id
-			});
+			if (data.location) {
+				location = await this.location.create({
+					address: data.location.address,
+					city: data.location.city,
+					state: data.location.state,
+					country: data.location.country,
+					zipCode: data.location.zipCode,
+					accountId: authData._id, // The Instructors id
+				});
+				console.log(location);
+			}
 		} catch (e) {
-			if (e.code === 11000)
-				return throwBadRequestError(
-					"Location for this instructor already exists. Please update the existing location instead of creating a new one.",
-				);
-			throw e;
+			if (e.code === 11000) {
+				/** @info- Do nothing */
+			} else {
+				throw e;
+			}
 		}
 
-		console.log("Created location:", location);
+		console.log("Created location:", location ?? "Empty location");
 
 		delete update.location;
 
+		const updateData = {
+			...update,
+			onboarded: true,
+		};
+
+		if (location) {
+			updateData.location = location._id;
+		}
+
 		return (
-			(await this.dbModel.findByIdAndUpdate(authData._id, {
-				...update,
-				location: location._id,
-				onboarded: true,
-			})) ??
+			(await this.dbModel.findByIdAndUpdate(authData._id, updateData)) ??
 			throwBadRequestError("Failed to onboard instructor. Please try again.")
 		);
 	};

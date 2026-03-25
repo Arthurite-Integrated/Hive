@@ -1,4 +1,7 @@
-export class StudentController {
+import { BaseUserController } from "#services/bases/base.user.controller";
+import { StudentService } from "./student.service.js";
+
+export class StudentController extends BaseUserController {
 	static instance = null;
 
 	static getInstance() {
@@ -7,5 +10,7 @@ export class StudentController {
 		return StudentController.instance;
 	}
 
-	constructor() {}
+	constructor() {
+		super("student", StudentService);
+	}
 }

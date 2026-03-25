@@ -190,4 +190,70 @@ export class BaseUserService {
 
 		return response;
 	};
+
+	profile = async (authData) => {
+		const user = await this.dbModel
+			.findById(authData._id)
+			.select("-salt -hash -mfaSecret -mfaRecoveryCodes");
+		if (!user) throwNotFoundError("User not found");
+		return user;
+	};
+
+	update = async (authData, data, extraFields = []) => {
+		const ALLOWED_FIELDS = [
+			"firstName",
+			"lastName",
+			"email",
+			"phone",
+			"bio",
+			...extraFields,
+		];
+
+		const filtered = Object.fromEntries(
+			Object.entries(data).filter(([key]) => ALLOWED_FIELDS.includes(key)),
+		);
+
+		const user = await this.dbModel.findByIdAndUpdate(authData._id, filtered, {
+			new: true,
+			runValidators: true,
+		});
+
+		if (!user) throwNotFoundError("User not found");
+		return user;
+	};
+
+	updatePassword = async (authData, oldPassword, newPassword) => {
+		const user = await this.dbModel.findById(authData._id);
+		if (!user) throwNotFoundError("User not found");
+
+		/** @info - Validates password if true or not */
+		const isPasswordValid = await user.validatePassword(oldPassword);
+		if (!isPasswordValid) throwBadRequestError("Invalid old password");
+
+		user.password = this.encryptionService.encrypt(newPassword);
+
+		return await user.save();
+	};
+
+	updateAvatar = async (authData, avatarUrl) => {
+		return (
+			(await this.dbModel.findByIdAndUpdate(
+				authData._id,
+				{ avatar: avatarUrl },
+				{ new: true, runValidators: true },
+			)) ??
+			throwNotFoundError(
+				`${this.modelName[0].toUpperCase() + this.modelName.slice(1)} not found`,
+			)
+		);
+	};
+
+	delete = async (authData) => {
+		return (
+			(await this.dbModel.findByIdAndDelete(authData._id)) ??
+			throwNotFoundError(
+				`${this.modelName[0].toUpperCase() + this.modelName.slice(1)} not found`,
+			)
+		);
+	};
 }

@@ -173,6 +173,8 @@ export const BaseUserSchema = new Schema(
 	},
 );
 
+// BaseUserSchema.index({ email: 1 });
+
 BaseUserSchema.methods.setPassword = async function (password) {
 	const salt = await genSalt(BYTE_LENGTH);
 	this.salt = salt;

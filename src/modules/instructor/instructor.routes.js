@@ -12,6 +12,8 @@ const controller = InstructorController.getInstance();
 
 instructorRouter.use(jwtService.validateToken);
 
+instructorRouter.get("/me", controller.getProfile);
+
 instructorRouter.use(
 	"/onboard",
 	zodEngine.validate.body(instructorOnboardSchema),
