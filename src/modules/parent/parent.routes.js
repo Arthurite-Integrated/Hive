@@ -25,3 +25,4 @@ parentRouter.patch(
 	controller.updatePassword,
 );
 parentRouter.delete("/me", controller.delete);
+parentRouter.post("/me/avatar", controller.updateAvatar);

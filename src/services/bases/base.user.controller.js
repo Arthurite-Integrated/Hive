@@ -39,12 +39,10 @@ export class BaseUserController {
 		});
 	};
 
-	updateAvatar = async (req, res) => {
-		const { avatarUrl } = req.body;
-		const data = await this.service.updateAvatar(req.authData, avatarUrl);
-		return sendSuccessResponse(res, {
-			message: `${this.#pascalize()} avatar updated successfully`,
-			data,
+	updateAvatar = async (_req, res) => {
+		return res.status(501).json({
+			success: false,
+			message: "Avatar upload not implemented yet. Requires S3 setup.",
 		});
 	};
 

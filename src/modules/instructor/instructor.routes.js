@@ -27,6 +27,7 @@ instructorRouter.patch(
 	controller.updatePassword,
 );
 instructorRouter.delete("/me", controller.delete);
+instructorRouter.post("/me/avatar", controller.updateAvatar);
 
 instructorRouter.use(
 	"/onboard",

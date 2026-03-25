@@ -25,3 +25,4 @@ studentRouter.patch(
 	controller.updatePassword,
 );
 studentRouter.delete("/me", controller.delete);
+studentRouter.post("/me/avatar", controller.updateAvatar);
