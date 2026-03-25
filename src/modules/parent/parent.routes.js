@@ -3,6 +3,10 @@ import { JwtService } from "#services/jwt.service";
 import { ZodEngine } from "#validator/engine/zod.engine";
 import { changePasswordSchema } from "#validator/user/change-password.schema";
 import { onboardSchema } from "#validator/user/onboard.schema";
+import {
+	linkStudentSchema,
+	linkIdParamSchema,
+} from "#validator/user/parent-student-link.schema";
 import { updateProfileSchema } from "#validator/user/update-profile.schema";
 import { ParentController } from "./parent.controller.js";
 
@@ -31,4 +35,17 @@ parentRouter.patch(
 	"/me/onboard",
 	zodEngine.validate.body(onboardSchema),
 	controller.onboard,
+);
+
+/** @info - Parent-Student linking */
+parentRouter.post(
+	"/me/link-student",
+	zodEngine.validate.body(linkStudentSchema),
+	controller.linkStudent,
+);
+parentRouter.get("/me/linked-students", controller.getLinkedStudents);
+parentRouter.delete(
+	"/me/links/:linkId",
+	zodEngine.validate.params(linkIdParamSchema),
+	controller.revokeLink,
 );
