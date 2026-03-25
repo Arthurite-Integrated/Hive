@@ -24,3 +24,4 @@ parentRouter.patch(
 	zodEngine.validate.body(changePasswordSchema),
 	controller.updatePassword,
 );
+parentRouter.delete("/me", controller.delete);

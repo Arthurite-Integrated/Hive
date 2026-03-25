@@ -272,11 +272,13 @@ export class BaseUserService {
 	};
 
 	delete = async (authData) => {
-		return (
-			(await this.dbModel.findByIdAndDelete(authData._id)) ??
-			throwNotFoundError(
-				`${this.modelName[0].toUpperCase() + this.modelName.slice(1)} not found`,
-			)
+		const user = await this.dbModel.findByIdAndUpdate(
+			authData._id,
+			{ status: "deleted", deletedAt: new Date() },
+			{ new: true },
 		);
+		if (!user) throwNotFoundError("User not found");
+
+		await this.#invalidateAllTokens(authData._id);
 	};
 }

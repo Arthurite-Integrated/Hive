@@ -24,3 +24,4 @@ studentRouter.patch(
 	zodEngine.validate.body(changePasswordSchema),
 	controller.updatePassword,
 );
+studentRouter.delete("/me", controller.delete);

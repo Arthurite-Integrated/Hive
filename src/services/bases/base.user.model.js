@@ -91,6 +91,17 @@ export const BaseUserSchema = new Schema(
 			default: {},
 		},
 
+		/** @info - Account status */
+		status: {
+			type: String,
+			enum: ["active", "suspended", "deleted"],
+			default: "active",
+		},
+		deletedAt: {
+			type: Date,
+			required: false,
+		},
+
 		/** @info - Onboarding */
 		onboarded: {
 			type: Boolean,

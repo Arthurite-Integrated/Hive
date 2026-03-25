@@ -26,6 +26,7 @@ instructorRouter.patch(
 	zodEngine.validate.body(changePasswordSchema),
 	controller.updatePassword,
 );
+instructorRouter.delete("/me", controller.delete);
 
 instructorRouter.use(
 	"/onboard",
