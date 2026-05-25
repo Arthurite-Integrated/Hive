@@ -1,14 +1,22 @@
 module.exports = {
 	apps: [
 		{
-			name: "hive-backend", // Name of the server
-			script: "app/server.js",
-			instances: 2, // Start 2 instances of the server
-			exec_mode: "cluster", // Use cluster mode to start the server
+			name: "hive-backend",
+			script: "./app/server.js",
+			interpreter: "node",
+			exec_mode: "fork",
+			instances: 2,
 			env: {
 				NODE_ENV: "production",
 			},
-			env_production: {
+		},
+		{
+			name: "hive-workers",
+			script: "./app/init.workers.js",
+			interpreter: "node",
+			exec_mode: "fork",
+			instances: 1,
+			env: {
 				NODE_ENV: "production",
 			},
 		},

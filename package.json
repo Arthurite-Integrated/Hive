@@ -5,7 +5,7 @@
 	"main": "index.js",
 	"scripts": {
 		"start:dev": "nodemon ./app/server.js",
-		"start:workers": "node ./app/init.worker.service.js",
+		"start:workers": "node ./app/init.workers.js",
 		"start:prod": "pm2 delete ecosystem.config.cjs && pm2 start ecosystem.config.cjs --env production",
 		"stop:prod": "pm2 delete ecosystem.config.cjs",
 		"test:prod": "node dist/server.cjs",
