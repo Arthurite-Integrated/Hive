@@ -1,6 +1,6 @@
 import { Schema, model } from "mongoose";
 import { ModelCollections } from "#enums/models/index";
-import { PaymentGateway } from "#enums/payment/payment.enums";
+import { PaymentGateway, PaymentStatus } from "#enums/payment/payment.enums";
 
 const PaymentSchema = new Schema(
 	{
@@ -36,6 +36,14 @@ const PaymentSchema = new Schema(
 		paymentMethod: {
 			type: String,
 			trim: true,
+		},
+		paymentType: {
+			type: String,
+			enum: {
+				values: ["one_time", "subscription"],
+				message: "Invalid payment type: {{VALUE}}",
+			},
+			default: "one_time",
 		},
 		gateway: {
 			type: String,
@@ -75,6 +83,10 @@ const PaymentSchema = new Schema(
 			type: Number,
 			default: 0,
 			min: 0,
+		},
+		payoutCleared: {
+			type: Boolean,
+			default: false,
 		},
 		referralId: {
 			type: Schema.Types.ObjectId,

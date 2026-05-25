@@ -50,60 +50,27 @@ const LessonSchema = new Schema(
 
 		videoLesson: {
 			type: {
-				videoUrl: {
-					type: String,
-					required: [true, "Video URL is required for video lessons"],
-				},
+				videoUrl: String,
 				video360pUrl: String,
 				video720pUrl: String,
 				video1080pUrl: String,
 				audioOnlyUrl: String,
 				videoDuration: Number,
 			},
-			required: [
-				function () {
-					return this.type === LESSON_TYPE.VIDEO;
-				},
-				"Video lesson details are required when type is 'video'",
-			],
 		},
 
 		pdfLesson: {
 			type: {
-				pdfUrl: {
-					type: String,
-					required: [true, "PDF URL is required for PDF lessons"],
-				},
+				pdfUrl: String,
 			},
-			required: [
-				function () {
-					return this.type === LESSON_TYPE.PDF;
-				},
-				"PDF lesson details are required when type is 'pdf'",
-			],
 		},
 
 		liveLesson: {
 			type: {
-				scheduledAt: {
-					type: Date,
-					required: [
-						true,
-						"Scheduled date and time is required for live lessons",
-					],
-				},
-				duration: {
-					type: Number,
-					required: [true, "Duration in minutes is required for live lessons"],
-				},
-				meetingLink: {
-					type: String,
-					required: [true, "Meeting link is required for live lessons"],
-				},
-				recordingUrl: {
-					type: String,
-					required: false,
-				},
+				scheduledAt: Date,
+				duration: Number,
+				meetingLink: String,
+				recordingUrl: String,
 				platform: {
 					type: String,
 					enum: {
@@ -112,13 +79,39 @@ const LessonSchema = new Schema(
 					},
 				},
 			},
-			required: [
-				function () {
-					return this.type === LESSON_TYPE.LIVE;
-				},
-				"Live lesson details are required when type is 'live'",
-			],
 		},
+
+		// Flat video fields (used by builder upload flow)
+		videoKey: String,
+		videoUrl: String,
+		video360pUrl: String,
+		video720pUrl: String,
+		video1080pUrl: String,
+		audioOnlyUrl: String,
+		videoDuration: Number,
+		mediaConvertJobId: String,
+
+		// Flat PDF fields
+		pdfUrl: String,
+		pdfKey: String,
+
+		// Text lesson
+		textContent: String,
+
+		// Flat live fields
+		scheduledAt: Date,
+		duration: Number,
+		meetingLink: String,
+		recordingUrl: String,
+		platform: {
+			type: String,
+			enum: {
+				values: ["zoom", "meet", "teams", "other"],
+				message: "Invalid platform: {{VALUE}}",
+			},
+		},
+
+		dripDate: Date,
 
 		isFreePreview: {
 			type: Boolean,
@@ -138,5 +131,6 @@ const LessonSchema = new Schema(
 
 LessonSchema.index({ moduleId: 1, orderIndex: 1 });
 LessonSchema.index({ courseId: 1, type: 1 });
+LessonSchema.index({ courseId: 1, status: 1 });
 
 export const Lesson = mongoose.model(collectionName, LessonSchema);

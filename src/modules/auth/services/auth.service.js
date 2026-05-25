@@ -4,6 +4,7 @@ import { UserTypes } from "#enums/user.enums";
 import {
 	generateAuthenticatedData,
 	generateAuthTokens,
+	generateOTP,
 	grabUserIdFromAuthId,
 } from "#helpers/auth/index";
 import { TTL } from "#constants/ttl.constant";
@@ -91,7 +92,6 @@ export class AuthService {
 
 		if (!(await this.cacheService.redis.exists(refreshId)))
 			throwBadRequestError("Refresh token expired.");
-		console.log("Auth ID from refresh token:", refreshId);
 		await this.cacheService.delete(refreshId);
 
 		const token = await generateAuthTokens(authId);
@@ -160,7 +160,6 @@ export class AuthService {
 						email,
 					});
 
-					console.log(this.encryptionService.decrypt(password));
 					await instructor.setPassword(
 						this.encryptionService.decrypt(password),
 					);
@@ -174,7 +173,6 @@ export class AuthService {
 						email,
 					});
 
-					console.log(this.encryptionService.decrypt(password));
 					await parent.setPassword(this.encryptionService.decrypt(password));
 					user = parent;
 					break;
@@ -186,7 +184,6 @@ export class AuthService {
 						email,
 					});
 
-					console.log(this.encryptionService.decrypt(password));
 					await student.setPassword(this.encryptionService.decrypt(password));
 					user = student;
 					break;
@@ -219,7 +216,6 @@ export class AuthService {
 		}
 
 		const savedData = await user.save();
-		console.log(savedData);
 		user = generateAuthenticatedData(savedData.toObject());
 
 		if (action === JwtAction.VERIFY_EMAIL)
@@ -241,13 +237,42 @@ export class AuthService {
 		return { user, ...gen_tokens };
 	};
 
+	resendOtp = async (authData) => {
+		const { otpId, email, firstName } = authData;
+
+		if (!otpId || !email) throwBadRequestError("Invalid session.");
+
+		const existing = await this.cacheService.get(otpId);
+		if (existing?.lastSentAt) {
+			const elapsed = Date.now() - existing.lastSentAt;
+			if (elapsed < 60_000) {
+				return { retryAfter: Math.ceil((60_000 - elapsed) / 1000) };
+			}
+		}
+
+		const otp = generateOTP();
+
+		await this.cacheService.set(
+			otpId,
+			{ otp: this.encryptionService.encrypt(otp), lastSentAt: Date.now() },
+			TTL.IN_30_MINUTES,
+		);
+
+		this.emailQueueService.add(EmailJobNames.VERIFY_OTP, {
+			message: { to: email, subject: "Your verification code" },
+			template: "verify-otp",
+			locals: { otp, name: firstName, expiryMinutes: 30 },
+		});
+
+		return { retryAfter: 60 };
+	};
+
 	/** @info - OAuth */
 	authenticateWithGoogle = async (data) => {
 		return this.googleOAuthService.authenticate(data.userType, data.action);
 	};
 
 	loginWithGoogle = async (data) => {
-		console.log(data);
 		return this.googleOAuthService.login(data.code, data.state);
 	};
 

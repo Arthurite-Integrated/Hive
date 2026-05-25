@@ -1,30 +1,23 @@
-name: Deploy to EC2 Instance
-
+name: Deploy Hive to EC2
 on:
   push:
     branches:
       - main
-
 jobs:
-  setup-hive:
+  deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
-
-      - name: Install yarn
-        run: npm install -g yarn
+          node-version: 20
+          cache: "npm"
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile --ignore-scripts
-
-      # - name: Build project
-      #   run: yarn build
+        run: npm ci
 
       - name: Setup SSH
         run: |
@@ -33,13 +26,19 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2 Instance
+      - name: Deploy to EC2
         run: |
           rsync -avz --delete \
             --exclude '.env' --exclude '.env.*' --exclude '*.env' \
-            --exclude 'logs' --exclude 'node_modules' --exclude '.github' --exclude '.secrets'\
-            ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/ubuntu/hive
+            --exclude 'logs' --exclude 'node_modules' --exclude '.github' --exclude '.secrets' \
+            ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/hive-backend
 
-      - name: Restart the server
+      - name: Restart server
         run: |
-          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "source ~/.nvm/nvm.sh && cd ~/hive && yarn start:prod"
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            cd ~/hive-backend
+            npm ci
+            npx pm2 restart ecosystem.config.cjs || npx pm2 start ecosystem.config.cjs
+          EOF

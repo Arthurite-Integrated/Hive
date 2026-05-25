@@ -52,8 +52,6 @@ export class BaseUserService {
 	register = async (data) => {
 		if (await this.dbModel.findOne({ email: data.email }))
 			throwBadRequestError("Email already exists");
-
-		console.log(data);
 		const authId = generateAuthId();
 		const otpId = generateOTPId();
 		const otp = generateOTP();
@@ -101,7 +99,6 @@ export class BaseUserService {
 	};
 
 	login = async (data) => {
-		console.log(data);
 		const { email, password, loginType } = data;
 
 		let user =
@@ -110,8 +107,6 @@ export class BaseUserService {
 				`${this.modelName[0].toUpperCase() + this.modelName.slice(1)} not found`,
 			);
 		const authId = generateAuthId(user._id);
-
-		console.log(authId);
 
 		let response;
 
@@ -122,6 +117,19 @@ export class BaseUserService {
 				const isPasswordValid = await user.validatePassword(password);
 
 				if (!isPasswordValid) throwBadRequestError("Invalid password");
+
+				if (user.mfaEnabled) {
+					const mfaToken = this.jwtService.generateTokenFromPayload(
+						{
+							userId: user._id,
+							userType: this.modelName,
+							scope: "mfa-pending",
+						},
+						TTL.IN_5_MINUTES,
+					);
+					response = { message: "MFA required", mfaToken };
+					break;
+				}
 
 				await this.cacheService.set(
 					authId,
@@ -189,5 +197,115 @@ export class BaseUserService {
 		}
 
 		return response;
+	};
+
+	profile = async (authData) => {
+		const user = await this.dbModel
+			.findById(authData._id)
+			.select("-salt -hash -mfaSecret -mfaRecoveryCodes");
+		if (!user) throwNotFoundError("User not found");
+		return user;
+	};
+
+	async update(authData, data, extraFields = []) {
+		const ALLOWED_FIELDS = [
+			"firstName",
+			"lastName",
+			"phone",
+			"bio",
+			"preferences",
+			...extraFields,
+		];
+
+		const filtered = Object.fromEntries(
+			Object.entries(data).filter(([key]) => ALLOWED_FIELDS.includes(key)),
+		);
+
+		const user = await this.dbModel
+			.findByIdAndUpdate(authData._id, filtered, {
+				new: true,
+				runValidators: true,
+			})
+			.select("-salt -hash -mfaSecret -mfaRecoveryCodes");
+
+		if (!user) throwNotFoundError("User not found");
+		return user;
+	}
+
+	updatePassword = async (authData, oldPassword, newPassword) => {
+		const user = await this.dbModel.findById(authData._id);
+		if (!user) throwNotFoundError("User not found");
+
+		const isPasswordValid = await user.validatePassword(oldPassword);
+		if (!isPasswordValid) throwBadRequestError("Invalid current password");
+
+		await user.setPassword(newPassword);
+		await user.save();
+
+		await this.#invalidateAllTokens(authData._id);
+	};
+
+	#invalidateAllTokens = async (userId) => {
+		const patterns = [`refresh:${userId}-*`, `auth:${userId}-*`];
+
+		for (const pattern of patterns) {
+			let cursor = "0";
+			do {
+				const [nextCursor, keys] = await this.cacheService.redis.scan(
+					cursor,
+					"MATCH",
+					pattern,
+					"COUNT",
+					100,
+				);
+				cursor = nextCursor;
+				if (keys.length > 0) {
+					await this.cacheService.redis.del(...keys);
+				}
+			} while (cursor !== "0");
+		}
+	};
+
+	updateAvatar = async (authData, avatarUrl) => {
+		return (
+			(await this.dbModel.findByIdAndUpdate(
+				authData._id,
+				{ profilePhoto: avatarUrl },
+				{ new: true, runValidators: true },
+			)) ??
+			throwNotFoundError(
+				`${this.modelName[0].toUpperCase() + this.modelName.slice(1)} not found`,
+			)
+		);
+	};
+
+	async onboard(authData, data, extraFields = []) {
+		const ALLOWED_FIELDS = ["bio", "preferences", ...extraFields];
+
+		const filtered = Object.fromEntries(
+			Object.entries(data).filter(([key]) => ALLOWED_FIELDS.includes(key)),
+		);
+
+		const user = await this.dbModel
+			.findByIdAndUpdate(
+				authData._id,
+				{ ...filtered, onboarded: true },
+				{ new: true, runValidators: true },
+			)
+			.select("-salt -hash -mfaSecret -mfaRecoveryCodes");
+
+		if (!user) throwNotFoundError("User not found");
+		return user;
+	}
+
+	delete = async (authData) => {
+		const user = await this.dbModel.findByIdAndUpdate(
+			authData._id,
+			{ status: "deleted", deletedAt: new Date() },
+			{ new: true },
+		);
+		if (!user) throwNotFoundError("User not found");
+
+		await this.#invalidateAllTokens(authData._id);
 	};
 }

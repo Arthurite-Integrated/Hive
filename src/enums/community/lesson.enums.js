@@ -1,6 +1,7 @@
 export const LESSON_TYPE = {
 	VIDEO: "video",
 	PDF: "pdf",
+	TEXT: "text",
 	LIVE: "live",
 	QUIZ: "quiz",
 	ASSIGNMENT: "assignment",

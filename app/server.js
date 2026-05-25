@@ -1,69 +1,39 @@
 import http from "node:http";
-import { createBullBoard } from "@bull-board/api";
-import { BullMQAdapter } from "@bull-board/api/bullMQAdapter";
-import { ExpressAdapter } from "@bull-board/express";
-import cors from "cors";
-import express from "express";
 import { config } from "#config/config";
 import { mongoConnection } from "#connection/mongo.connection";
 import { redisConnection } from "#connection/redis.connection";
-import { errorHandler } from "#middlewares/error/index";
 import { RequestLogger } from "#middlewares/request-logger";
-import { routeNotFound } from "#middlewares/route-not-found";
-import { appRouter } from "#routes/router";
-import { EmailQueueService } from "#services/queues/email.queue.service";
 import { logger } from "#utils/logger";
+import { app } from "./app.js";
+import { WebSocketService } from "#services/websocket.service";
 
 let PORT = config.server.port;
-const app = express();
-const server = http.createServer(app);
+export const server = http.createServer(app);
 
 const getMessage = (port) => `
 ================================================
 Server Application Started!
 API V1: http://${config.server.hostname}:${port}
 API Docs: http://${config.server.hostname}:${port}/docs
+QUEUE Docs: http://${config.server.hostname}:${port}/queue
 ================================================
 `;
-
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ limit: "10mb", extended: true }));
-
-/** @info - Minimal cors config */
-app.use(cors({ origin: "*" }));
 
 // Attempt MongoDB/Redis connection (non-blocking)
 mongoConnection(startServer);
 redisConnection();
 
-app.use("/api/v1/", appRouter);
-
 app.use(RequestLogger);
 
-app.get(/^\/(api\/v1)?(\/)?$/, (_req, res) => {
-	return res.send({
-		success: true,
-		message: "Hello! Hive backend active!👋",
-	});
-});
-
-/** Bull MQ Dashboard */
-const bullMQAdapter = new ExpressAdapter();
-bullMQAdapter.setBasePath("/queue");
-
-createBullBoard({
-	queues: [new BullMQAdapter(EmailQueueService.getInstance().queue)],
-	serverAdapter: bullMQAdapter,
-});
-
-app.use("/queue", bullMQAdapter.getRouter());
-
-app.use(routeNotFound);
-app.use(errorHandler);
+let wsAttached = false;
 
 function startServer(port) {
 	server.listen(port, () => {
 		logger.info(`Server is running on port ${port}`);
+		if (!wsAttached) {
+			WebSocketService.getInstance().attach(server);
+			wsAttached = true;
+		}
 		console.log(getMessage(port));
 	});
 }

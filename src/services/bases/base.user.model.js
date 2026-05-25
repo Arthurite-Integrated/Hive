@@ -36,7 +36,7 @@ export const BaseUserSchema = new Schema(
 			type: Date,
 			required: false,
 		},
-		avatar: {
+		profilePhoto: {
 			type: String,
 			required: false,
 		},
@@ -84,6 +84,32 @@ export const BaseUserSchema = new Schema(
 		mfaEnabled: {
 			type: Boolean,
 			default: false,
+		},
+		mfaSecret: {
+			type: String,
+			required: false,
+		},
+		mfaRecoveryCodes: {
+			type: [String],
+			default: [],
+		},
+
+		preferences: {
+			emailNotifications: {
+				type: Boolean,
+				default: true,
+			},
+		},
+
+		/** @info - Account status */
+		status: {
+			type: String,
+			enum: ["active", "suspended", "deleted"],
+			default: "active",
+		},
+		deletedAt: {
+			type: Date,
+			required: false,
 		},
 
 		/** @info - Onboarding */
@@ -168,10 +194,12 @@ export const BaseUserSchema = new Schema(
 		timestamps: true,
 		versionKey: false,
 		virtuals: true,
-		toJson: { virtuals: true }, // Ensure virtuals are included when converting to JSON
+		toJSON: { virtuals: true }, // Ensure virtuals are included when converting to JSON
 		toObject: { virtuals: true }, // Ensure virtuals are included when converting to plain objects
 	},
 );
+
+// BaseUserSchema.index({ email: 1 });
 
 BaseUserSchema.methods.setPassword = async function (password) {
 	const salt = await genSalt(BYTE_LENGTH);

@@ -9,12 +9,12 @@ const InstructorSchema = BaseUserSchema.clone();
 
 InstructorSchema.add({
 	/** @info - Onboarding details */
-	subjects: {
+	specializations: {
 		type: [String],
 		required: false,
 	},
 
-	gradeLevels: {
+	gradeExperienceLevels: {
 		type: [String],
 		required: false,
 	},
@@ -24,15 +24,13 @@ InstructorSchema.add({
 		required: false,
 	},
 
-	preferredTeachingMode: {
-		type: String,
+	teachingMode: {
+		type: [String],
 		enum: {
 			values: Object.values(TeachingModes),
 			message: "Invalid teaching mode: {{VALUE}}",
 		},
 		required: false,
-		default: "online",
-		lowercase: true,
 	},
 });
 
@@ -40,8 +38,8 @@ InstructorSchema.virtual("fullName").get(function () {
 	return `${this.firstName} ${this.lastName}`;
 });
 
-InstructorSchema.methods.setPassword = BaseUserSchema.methods.setPassword;
-InstructorSchema.methods.validatePassword =
-	BaseUserSchema.methods.validatePassword;
+InstructorSchema.pre("save", function () {
+	if (!this.userType) this.userType = "instructor";
+});
 
 export const Instructor = model(collectionName, InstructorSchema);

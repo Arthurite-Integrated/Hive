@@ -24,6 +24,14 @@ const ModuleSchema = new Schema(
 			required: true,
 			default: 0,
 		},
+		status: {
+			type: String,
+			enum: {
+				values: ["active", "archived"],
+				message: "Invalid module status: {{VALUE}}",
+			},
+			default: "active",
+		},
 		isDeleted: {
 			type: Boolean,
 			default: false,
@@ -37,7 +45,7 @@ const ModuleSchema = new Schema(
 // Compound index for ordered retrieval by course
 ModuleSchema.index({ courseId: 1, orderIndex: 1 });
 
-// Soft delete index
-ModuleSchema.index({ isDeleted: 1 });
+// Status index
+ModuleSchema.index({ courseId: 1, status: 1 });
 
 export const Module = model(collectionName, ModuleSchema);

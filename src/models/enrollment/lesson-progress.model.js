@@ -13,16 +13,27 @@ const LessonProgressSchema = new Schema(
 			ref: ModelCollections.LESSON,
 			required: true,
 		},
+		courseId: {
+			type: Schema.Types.ObjectId,
+			ref: ModelCollections.COURSE,
+			required: true,
+		},
 		enrollmentId: {
 			type: Schema.Types.ObjectId,
 			ref: ModelCollections.ENROLLMENT,
-			required: true,
 		},
 		completed: {
 			type: Boolean,
 			default: false,
 		},
+		completedAt: Date,
 		progress: {
+			type: Number,
+			default: 0,
+			min: 0,
+			max: 100,
+		},
+		watchedSeconds: {
 			type: Number,
 			default: 0,
 		},
@@ -30,7 +41,6 @@ const LessonProgressSchema = new Schema(
 			type: Number,
 			default: 0,
 		},
-		completedAt: Date,
 		lastAccessedAt: {
 			type: Date,
 			default: Date.now,
@@ -40,6 +50,8 @@ const LessonProgressSchema = new Schema(
 );
 
 LessonProgressSchema.index({ studentId: 1, lessonId: 1 }, { unique: true });
+LessonProgressSchema.index({ studentId: 1, courseId: 1 });
+LessonProgressSchema.index({ courseId: 1, completed: 1 });
 
 export const LessonProgress = model(
 	ModelCollections.LESSON_PROGRESS,

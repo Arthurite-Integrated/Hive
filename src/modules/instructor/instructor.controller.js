@@ -1,8 +1,9 @@
 import { StatusCodes } from "http-status-codes";
 import { sendSuccessResponse } from "#helpers/responses/index";
 import { InstructorService } from "./instructor.service.js";
+import { BaseUserController } from "#services/bases/base.user.controller";
 
-export class InstructorController {
+export class InstructorController extends BaseUserController {
 	static instance = null;
 
 	static getInstance() {
@@ -12,6 +13,7 @@ export class InstructorController {
 	}
 
 	constructor() {
+		super("instructor", InstructorService);
 		this.instructorService = InstructorService.getInstance();
 	}
 

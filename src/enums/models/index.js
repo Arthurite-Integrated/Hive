@@ -12,6 +12,7 @@ export const ModelCollections = {
 	REVIEW: "review",
 	NOTIFICATION: "notification",
 	MESSAGE: "message",
+	COMMUNITY_MESSAGE: "community_message",
 	LOCATION: "location",
 
 	PARENT_STUDENT_LINK: "parent_student_link",
@@ -29,10 +30,13 @@ export const ModelCollections = {
 	QUIZ_ATTEMPT: "quiz_attempt",
 
 	ENROLLMENT: "enrollment",
+	LEARNING_STREAK: "learning_streak",
+	LESSON_PROGRESS: "lesson_progress",
 	CERTIFICATE: "certificate",
 	SUBSCRIPTION: "subscription",
 	PAYMENT: "payment",
 	WITHDRAWAL: "withdrawal",
 	TEACHER_BALANCE: "teacher_balance",
 	REFERRAL: "referral",
+	LIVE_ATTENDANCE: "live_attendance",
 };

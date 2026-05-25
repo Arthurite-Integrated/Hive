@@ -36,13 +36,12 @@ export class ZodEngine {
 				if (error instanceof z.ZodError) {
 					const { issues } = error;
 					const errorMessages = {};
-					console.log(issues);
 
 					issues.forEach((issue) => {
 						const { path, message, code } = issue;
 						errorMessages[path] = { message, code };
 					});
-					sendErrorResponse(
+					return sendErrorResponse(
 						res,
 						{ errors: errorMessages },
 						StatusCodes.BAD_REQUEST,
@@ -73,7 +72,7 @@ export class ZodEngine {
 						const { path, message, code } = issue;
 						errorMessages[path] = { message, code };
 					});
-					sendErrorResponse(
+					return sendErrorResponse(
 						res,
 						{ errors: errorMessages },
 						StatusCodes.BAD_REQUEST,
@@ -104,7 +103,7 @@ export class ZodEngine {
 						const { path, message, code } = issue;
 						errorMessages[path] = { message, code };
 					});
-					sendErrorResponse(
+					return sendErrorResponse(
 						res,
 						{ errors: errorMessages },
 						StatusCodes.BAD_REQUEST,
