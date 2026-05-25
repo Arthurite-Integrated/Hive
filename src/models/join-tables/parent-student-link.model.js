@@ -1,4 +1,5 @@
 import { ModelCollections } from "#enums/models/index";
+import { LINK_STATUS } from "#enums/parent/index";
 import { Schema, model } from "mongoose";
 
 const collectionName = ModelCollections.PARENT_STUDENT_LINK;
@@ -35,8 +36,11 @@ const ParentStudentLinkSchema = new Schema(
 		},
 		status: {
 			type: String,
-			enum: ["pending", "active", "revoked"],
-			default: "pending",
+			enum: {
+				values: Object.values(LINK_STATUS),
+				message: "Invalid link status: {{VALUE}}",
+			},
+			default: LINK_STATUS.PENDING,
 		},
 		approvedByStudent: {
 			type: Boolean,

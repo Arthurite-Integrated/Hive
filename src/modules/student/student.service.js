@@ -48,7 +48,7 @@ export class StudentService extends BaseUserService {
 		return await ParentStudentLink.find({
 			studentId,
 			status: "active",
-		}).populate("parentId", "firstName lastName email avatar");
+		}).populate("parentId", "firstName lastName email profilePhoto");
 	};
 
 	revokeLink = async (studentId, linkId) => {

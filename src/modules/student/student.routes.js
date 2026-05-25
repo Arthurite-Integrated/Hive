@@ -27,7 +27,7 @@ studentRouter.patch(
 	controller.updatePassword,
 );
 studentRouter.delete("/me", controller.delete);
-studentRouter.post("/me/avatar", controller.updateAvatar);
+studentRouter.post("/me/profile-photo", controller.updateAvatar);
 studentRouter.patch(
 	"/me/onboard",
 	zodEngine.validate.body(onboardSchema),

@@ -36,7 +36,7 @@ export const BaseUserSchema = new Schema(
 			type: Date,
 			required: false,
 		},
-		avatar: {
+		profilePhoto: {
 			type: String,
 			required: false,
 		},
@@ -85,10 +85,20 @@ export const BaseUserSchema = new Schema(
 			type: Boolean,
 			default: false,
 		},
+		mfaSecret: {
+			type: String,
+			required: false,
+		},
+		mfaRecoveryCodes: {
+			type: [String],
+			default: [],
+		},
 
 		preferences: {
-			type: Schema.Types.Mixed,
-			default: {},
+			emailNotifications: {
+				type: Boolean,
+				default: true,
+			},
 		},
 
 		/** @info - Account status */
@@ -184,7 +194,7 @@ export const BaseUserSchema = new Schema(
 		timestamps: true,
 		versionKey: false,
 		virtuals: true,
-		toJson: { virtuals: true }, // Ensure virtuals are included when converting to JSON
+		toJSON: { virtuals: true }, // Ensure virtuals are included when converting to JSON
 		toObject: { virtuals: true }, // Ensure virtuals are included when converting to plain objects
 	},
 );

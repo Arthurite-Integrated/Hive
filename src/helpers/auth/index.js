@@ -26,16 +26,12 @@ export const generateRefreshTokenId = (userId = null) => {
 };
 
 export const getLocationFromIP = async (ip) => {
-	console.log("ip", ip);
 	try {
-		// Skip for localhost/private IPs
 		if (ip === "127.0.0.1" || ip === "::1" || ip.startsWith("192.168")) {
 			return "Local Network";
 		}
 
 		const { data } = await axios.get(`https://ipapi.co/${ip}/json/`);
-
-		console.log(data);
 
 		return `${data.city}, ${data.country_name}` || "Unknown Location";
 	} catch {
@@ -49,7 +45,6 @@ export const generateAuthenticatedData = (modelData) => {
 		isAuthenticated: true,
 		authenticatedAt: new Date(),
 	};
-	console.log(data);
 	return _.omit(data, ["salt", "hash"]);
 };
 

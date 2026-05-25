@@ -167,7 +167,7 @@ export class GoogleOAuthService extends BaseOAuthService {
 			lastName: userInfo.family_name,
 			email: userInfo.email,
 			authMethod: AuthMethods.GOOGLE,
-			avatar: userInfo.picture,
+			profilePhoto: userInfo.picture,
 			google: this.#buildGoogleCredentials(tokens),
 			emailVerified: true,
 			emailVerifiedAt: new Date(),

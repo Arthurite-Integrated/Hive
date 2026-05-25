@@ -52,8 +52,6 @@ export class BaseUserService {
 	register = async (data) => {
 		if (await this.dbModel.findOne({ email: data.email }))
 			throwBadRequestError("Email already exists");
-
-		console.log(data);
 		const authId = generateAuthId();
 		const otpId = generateOTPId();
 		const otp = generateOTP();
@@ -101,7 +99,6 @@ export class BaseUserService {
 	};
 
 	login = async (data) => {
-		console.log(data);
 		const { email, password, loginType } = data;
 
 		let user =
@@ -110,8 +107,6 @@ export class BaseUserService {
 				`${this.modelName[0].toUpperCase() + this.modelName.slice(1)} not found`,
 			);
 		const authId = generateAuthId(user._id);
-
-		console.log(authId);
 
 		let response;
 
@@ -122,6 +117,19 @@ export class BaseUserService {
 				const isPasswordValid = await user.validatePassword(password);
 
 				if (!isPasswordValid) throwBadRequestError("Invalid password");
+
+				if (user.mfaEnabled) {
+					const mfaToken = this.jwtService.generateTokenFromPayload(
+						{
+							userId: user._id,
+							userType: this.modelName,
+							scope: "mfa-pending",
+						},
+						TTL.IN_5_MINUTES,
+					);
+					response = { message: "MFA required", mfaToken };
+					break;
+				}
 
 				await this.cacheService.set(
 					authId,
@@ -199,7 +207,7 @@ export class BaseUserService {
 		return user;
 	};
 
-	update = async (authData, data, extraFields = []) => {
+	async update(authData, data, extraFields = []) {
 		const ALLOWED_FIELDS = [
 			"firstName",
 			"lastName",
@@ -222,7 +230,7 @@ export class BaseUserService {
 
 		if (!user) throwNotFoundError("User not found");
 		return user;
-	};
+	}
 
 	updatePassword = async (authData, oldPassword, newPassword) => {
 		const user = await this.dbModel.findById(authData._id);
@@ -262,7 +270,7 @@ export class BaseUserService {
 		return (
 			(await this.dbModel.findByIdAndUpdate(
 				authData._id,
-				{ avatar: avatarUrl },
+				{ profilePhoto: avatarUrl },
 				{ new: true, runValidators: true },
 			)) ??
 			throwNotFoundError(
@@ -271,7 +279,7 @@ export class BaseUserService {
 		);
 	};
 
-	onboard = async (authData, data, extraFields = []) => {
+	async onboard(authData, data, extraFields = []) {
 		const ALLOWED_FIELDS = ["bio", "preferences", ...extraFields];
 
 		const filtered = Object.fromEntries(
@@ -288,7 +296,7 @@ export class BaseUserService {
 
 		if (!user) throwNotFoundError("User not found");
 		return user;
-	};
+	}
 
 	delete = async (authData) => {
 		const user = await this.dbModel.findByIdAndUpdate(

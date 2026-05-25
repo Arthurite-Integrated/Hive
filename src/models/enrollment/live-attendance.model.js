@@ -1,3 +1,4 @@
+import { Schema, model } from "mongoose";
 import { ModelCollections } from "#enums/models/index";
 
 const LiveAttendanceSchema = new Schema(

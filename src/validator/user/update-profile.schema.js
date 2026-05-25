@@ -6,7 +6,12 @@ export const updateProfileSchema = z
 		lastName: z.string().min(1).max(100).optional(),
 		bio: z.string().max(1000).optional(),
 		phone: z.string().optional(),
-		preferences: z.record(z.unknown()).optional(),
-		specialization: z.string().max(200).optional(),
+		preferences: z
+			.object({
+				emailNotifications: z.boolean().optional(),
+				progressReport: z.enum(["weekly", "monthly"]).optional(),
+			})
+			.optional(),
+		specializations: z.array(z.string().max(200)).optional(),
 	})
 	.strip();

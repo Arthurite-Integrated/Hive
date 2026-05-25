@@ -1,6 +1,7 @@
 export const QueueNames = {
 	EMAIL: "email-queue",
 	NOTIFICATION: "notification-queue",
+	PAYMENT: "payment-queue",
 };
 
 export const JobNames = {

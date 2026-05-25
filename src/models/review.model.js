@@ -61,6 +61,8 @@ const ReviewSchema = new Schema(
 			min: 0,
 		},
 
+		helpfulVotes: [{ type: Schema.Types.ObjectId }],
+
 		instructorReply: {
 			type: InstructorReplySchema,
 			default: undefined,

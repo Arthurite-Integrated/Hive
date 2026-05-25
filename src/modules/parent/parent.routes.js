@@ -30,7 +30,7 @@ parentRouter.patch(
 	controller.updatePassword,
 );
 parentRouter.delete("/me", controller.delete);
-parentRouter.post("/me/avatar", controller.updateAvatar);
+parentRouter.post("/me/profile-photo", controller.updateAvatar);
 parentRouter.patch(
 	"/me/onboard",
 	zodEngine.validate.body(onboardSchema),

@@ -205,7 +205,7 @@ export class FacebookOAuthService extends BaseOAuthService {
 			lastName: userInfo.family_name,
 			email: userInfo.email,
 			authMethod: AuthMethods.FACEBOOK,
-			avatar: userInfo.picture,
+			profilePhoto: userInfo.picture,
 			facebook: this.#buildFacebookCredentials(tokens),
 			emailVerified: true,
 			emailVerifiedAt: new Date(),

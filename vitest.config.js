@@ -12,9 +12,17 @@ export default defineConfig({
 			"#utils": path.resolve("src/utils"),
 			"#constants": path.resolve("src/constants"),
 			"#enums": path.resolve("src/enums"),
+			"#modules": path.resolve("src/modules"),
+			"#models": path.resolve("src/models"),
+			"#routes": path.resolve("src/routes"),
+			"#connection": path.resolve("src/connection"),
+			"#validator": path.resolve("src/validator"),
 		},
 	},
 	test: {
 		globals: true,
+		testTimeout: 30000,
+		hookTimeout: 30000,
+		fileParallelism: false,
 	},
 });

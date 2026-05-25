@@ -42,7 +42,7 @@ export class BaseUserController {
 	updateAvatar = async (_req, res) => {
 		return res.status(501).json({
 			success: false,
-			message: "Avatar upload not implemented yet. Requires S3 setup.",
+			message: "Profile photo upload not implemented yet. Requires S3 setup.",
 		});
 	};
 

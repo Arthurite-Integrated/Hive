@@ -7,6 +7,7 @@ import {
 	throwUnsupportedMediaTypeError,
 } from "#helpers/errors/throw-error";
 import { S3Service } from "#services/s3.service";
+import { SIZE } from "#constants/size.constant";
 
 // ─── MIME → Safe Extension Map ──────────────────────────────────────────────
 
@@ -79,14 +80,16 @@ const getSafeExtension = (mimetype) => {
 // ─── Multer Instances (memory storage) ──────────────────────────────────────
 
 /**
- * @info - Upload a single avatar image (max 5 MB)
- * Field name: "avatar"
+ * @info - Upload a single profile photo image (max 5 MB)
+ * Field name: "profilePhoto"
  */
-export const uploadAvatar = multer({
+export const uploadProfilePhoto = multer({
 	storage: multer.memoryStorage(),
 	limits: { fileSize: 5 * 1024 * 1024 },
 	fileFilter: createFileFilter(IMAGE_MIMES),
-}).single("avatar");
+}).single("profilePhoto");
+
+export const uploadAvatar = uploadProfilePhoto;
 
 /**
  * @info - Upload a single document (max 50 MB) — PDF, DOCX, or images
@@ -94,7 +97,7 @@ export const uploadAvatar = multer({
  */
 export const uploadDocument = multer({
 	storage: multer.memoryStorage(),
-	limits: { fileSize: 50 * 1024 * 1024 },
+	limits: { fileSize: SIZE["50MB"] },
 	fileFilter: createFileFilter(DOCUMENT_MIMES),
 }).single("document");
 
@@ -106,7 +109,7 @@ export const uploadDocument = multer({
 export const uploadAssignment = (allowedMimes = DOCUMENT_MIMES) =>
 	multer({
 		storage: multer.memoryStorage(),
-		limits: { fileSize: 50 * 1024 * 1024 },
+		limits: { fileSize: SIZE["50MB"] },
 		fileFilter: createFileFilter(
 			allowedMimes instanceof Set ? allowedMimes : new Set(allowedMimes),
 		),

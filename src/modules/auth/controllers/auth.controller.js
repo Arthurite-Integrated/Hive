@@ -3,6 +3,14 @@ import _ from "lodash";
 import { sendSuccessResponse } from "#helpers/responses/index";
 import { AuthService } from "#modules/auth/services/auth.service";
 
+const REFRESH_COOKIE_OPTIONS = {
+	httpOnly: true,
+	secure: process.env.NODE_ENV === "production",
+	sameSite: "strict",
+	path: "/api/v1/auth",
+	maxAge: 7 * 24 * 60 * 60 * 1000,
+};
+
 export class AuthController {
 	static instance = null;
 
@@ -17,6 +25,18 @@ export class AuthController {
 	/** @private */
 	constructor() {
 		this.authService = AuthService.getInstance();
+	}
+
+	#setRefreshCookie(res, token) {
+		res.cookie("refreshToken", token, REFRESH_COOKIE_OPTIONS);
+	}
+
+	#clearRefreshCookie(res) {
+		res.clearCookie("refreshToken", REFRESH_COOKIE_OPTIONS);
+	}
+
+	#getRefreshToken(req) {
+		return req.cookies?.refreshToken || req.body?.refreshToken;
 	}
 
 	register = async (req, res) => {
@@ -39,6 +59,11 @@ export class AuthController {
 			...req.body,
 			...req.clientMetadata,
 		});
+
+		if (data.refreshToken) {
+			this.#setRefreshCookie(res, data.refreshToken);
+		}
+
 		return sendSuccessResponse(res, {
 			message: data.message,
 			data: _.omit(data, ["message"]),
@@ -46,7 +71,13 @@ export class AuthController {
 	};
 
 	refreshToken = async (req, res) => {
-		const data = await this.authService.refresh(req.body.refreshToken);
+		const token = this.#getRefreshToken(req);
+		const data = await this.authService.refresh(token);
+
+		if (data.refreshToken) {
+			this.#setRefreshCookie(res, data.refreshToken);
+		}
+
 		return sendSuccessResponse(
 			res,
 			{
@@ -58,33 +89,48 @@ export class AuthController {
 	};
 
 	logout = async (req, res) => {
-		await this.authService.logout(req.body.refreshToken);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Logged out successfully",
-			},
-			StatusCodes.OK,
-		);
+		const token = this.#getRefreshToken(req);
+		if (token) {
+			await this.authService.logout(token);
+		}
+		this.#clearRefreshCookie(res);
+		return sendSuccessResponse(res, { message: "Logged out successfully" });
 	};
 
 	logoutAll = async (req, res) => {
-		await this.authService.logoutAll(req.body.refreshToken);
-		return sendSuccessResponse(
-			res,
-			{
-				message: "Logged out of all accounts successfully",
-			},
-			StatusCodes.OK,
-		);
+		const token = this.#getRefreshToken(req);
+		if (token) {
+			await this.authService.logoutAll(token);
+		}
+		this.#clearRefreshCookie(res);
+		return sendSuccessResponse(res, {
+			message: "Logged out of all sessions successfully",
+		});
 	};
 
 	verifyEmail = async (req, res) => {
 		const data = await this.authService.verifyEmail(req.authData, req.body.otp);
+
+		if (data.refreshToken) {
+			this.#setRefreshCookie(res, data.refreshToken);
+		}
+
 		return sendSuccessResponse(
 			res,
 			{
 				message: "Email verified successfully",
+				data,
+			},
+			StatusCodes.OK,
+		);
+	};
+
+	resendOtp = async (req, res) => {
+		const data = await this.authService.resendOtp(req.authData);
+		return sendSuccessResponse(
+			res,
+			{
+				message: "OTP sent successfully",
 				data,
 			},
 			StatusCodes.OK,

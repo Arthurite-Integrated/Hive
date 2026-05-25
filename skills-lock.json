@@ -1,0 +1,15 @@
+{
+	"version": 1,
+	"skills": {
+		"pr-address": {
+			"source": "Significant-Gravitas/AutoGPT",
+			"sourceType": "github",
+			"computedHash": "92cfc244863e331b035e28bb8424cb8f2cb6aec195fab5b4539ca395e7ff4472"
+		},
+		"pr-review": {
+			"source": "Significant-Gravitas/AutoGPT",
+			"sourceType": "github",
+			"computedHash": "07e9628e0ce6f3998f0b9c7d9e01a362a70007b96a0d1d782fd7bf2cf42fe875"
+		}
+	}
+}

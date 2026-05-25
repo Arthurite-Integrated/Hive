@@ -2,7 +2,7 @@ import { config } from "#config/config";
 import { COMMUNITY_STATUS, COMMUNITY_VISIBILITY } from "#enums/community/index";
 import { ModelCollections } from "#enums/models/index";
 import { randomBytes } from "crypto";
-import { Schema, model } from "monggose";
+import { Schema, model } from "mongoose";
 
 const collectionName = ModelCollections.COMMUNITY;
 
@@ -79,7 +79,10 @@ const CommunitySchema = new Schema(
 	},
 );
 
-CommunitySchema.index({ slug: 1 });
+CommunitySchema.index({ ownerId: 1 });
+CommunitySchema.index({ status: 1, visibility: 1 });
+CommunitySchema.index({ category: 1 });
+CommunitySchema.index({ name: "text", description: "text" });
 
 CommunitySchema.virtual("url").get(function () {
 	return `${config.server.rootDomain}/communities/${this.slug}`;

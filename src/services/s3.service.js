@@ -26,6 +26,11 @@ export class S3Service {
 				accessKeyId: config.s3.accessKeyId,
 				secretAccessKey: config.s3.secretAccessKey,
 			},
+			// Disable automatic checksum injection so presigned PUT URLs work
+			// from the browser without needing extra headers (AWS SDK v3 default
+			// adds x-amz-checksum-crc32 which causes 403 on direct browser PUTs)
+			requestChecksumCalculation: "WHEN_REQUIRED",
+			responseChecksumValidation: "WHEN_REQUIRED",
 		};
 
 		// Use custom endpoint for local development (e.g. LocalStack)
@@ -66,13 +71,15 @@ export class S3Service {
 	 */
 	generatePresignedUploadUrl = async ({
 		key,
-		contentType,
+		_contentType,
 		expiresIn = TTL.IN_AN_HOUR,
 	}) => {
+		// Do NOT include ContentType in the command — if we sign it,
+		// the browser must send the exact same Content-Type header or S3 rejects.
+		// Leaving it out means the presigned URL works with any Content-Type.
 		const command = new PutObjectCommand({
 			Bucket: this.bucket,
 			Key: key,
-			ContentType: contentType,
 		});
 
 		const url = await getSignedUrl(this.client, command, { expiresIn });
@@ -85,14 +92,16 @@ export class S3Service {
 	 * @param {Object} params
 	 * @param {string} params.key - The S3 object key (path)
 	 * @param {number} [params.expiresIn=TTL.IN_AN_HOUR] - URL expiration in seconds (default 1 hour)
+	 * @param {string} [params.bucket] - Override bucket (defaults to this.bucket)
 	 * @returns {Promise<string>} - The presigned download URL
 	 */
 	generatePresignedDownloadUrl = async ({
 		key,
 		expiresIn = TTL.IN_AN_HOUR,
+		bucket,
 	}) => {
 		const command = new GetObjectCommand({
-			Bucket: this.bucket,
+			Bucket: bucket ?? this.bucket,
 			Key: key,
 		});
 

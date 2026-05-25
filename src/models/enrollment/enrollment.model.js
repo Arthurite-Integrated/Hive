@@ -26,8 +26,10 @@ export const enrollmentSchema = new Schema(
 			type: String,
 			enum: {
 				values: Object.values(EnrollmentStatus),
-				message: "Status must be either active, expired, or cancelled",
+				message:
+					"Status must be either active, expired, cancelled, or completed",
 			},
+			default: EnrollmentStatus.ACTIVE,
 			required: true,
 		},
 		progress: {
@@ -42,6 +44,7 @@ export const enrollmentSchema = new Schema(
 				values: Object.values(EnrollmentPaymentType),
 				message: "Payment type must be either free, one_time, or subscription",
 			},
+			default: EnrollmentPaymentType.FREE,
 			required: true,
 		},
 		subscriptionId: {
@@ -67,5 +70,7 @@ export const enrollmentSchema = new Schema(
 
 // Compound unique index
 enrollmentSchema.index({ studentId: 1, courseId: 1 }, { unique: true });
+enrollmentSchema.index({ courseId: 1, status: 1 });
+enrollmentSchema.index({ studentId: 1, status: 1 });
 
 export const Enrollment = model(ModelCollections.ENROLLMENT, enrollmentSchema);

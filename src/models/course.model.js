@@ -1,5 +1,6 @@
 import { CourseDifficulty, CourseStatus } from "#enums/community/course.enums";
 import { ModelCollections } from "#enums/models/index";
+import { randomBytes } from "crypto";
 import { Schema, model } from "mongoose";
 
 const collectionName = ModelCollections.COURSE;
@@ -20,10 +21,10 @@ const CourseSchema = new Schema(
 		title: {
 			type: String,
 			required: true,
+			trim: true,
 		},
 		slug: {
 			type: String,
-			required: true,
 		},
 		description: String,
 		coverImage: String,
@@ -34,7 +35,6 @@ const CourseSchema = new Schema(
 				values: Object.values(CourseDifficulty),
 				message: "Invalid course difficulty: {{VALUE}}",
 			},
-			required: true,
 		},
 		status: {
 			type: String,
@@ -47,7 +47,7 @@ const CourseSchema = new Schema(
 
 		isFree: {
 			type: Boolean,
-			default: false,
+			default: true,
 		},
 		price: {
 			type: Number,
@@ -109,6 +109,29 @@ const CourseSchema = new Schema(
 	},
 	{ timestamps: true },
 );
+
+CourseSchema.pre("validate", async function () {
+	if (!this.isNew && !this.isModified("title")) return;
+
+	const slugBase = this.title
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "")
+		.substring(0, 60);
+
+	const exists = await this.constructor.findOne({
+		communityId: this.communityId,
+		slug: slugBase,
+		_id: { $ne: this._id },
+	});
+
+	if (!exists) {
+		this.slug = slugBase;
+	} else {
+		const suffix = randomBytes(2).toString("hex");
+		this.slug = `${slugBase.substring(0, 55)}-${suffix}`;
+	}
+});
 
 // Compound unique index: slug is unique within a community
 CourseSchema.index({ communityId: 1, slug: 1 }, { unique: true });
