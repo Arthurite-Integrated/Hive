@@ -55,6 +55,7 @@
 		"process": "^0.11.10",
 		"qrcode": "^1.5.4",
 		"rate-limit-redis": "^5.0.0",
+		"resend": "^6.17.1",
 		"socket.io": "^4.8.3",
 		"supertest": "^7.2.2",
 		"tsc": "^2.0.4",
