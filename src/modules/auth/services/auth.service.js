@@ -1,0 +1,300 @@
+import { JwtAction } from "#enums/auth/index";
+import { EmailJobNames } from "#enums/queue/index";
+import { UserTypes } from "#enums/user.enums";
+import {
+	generateAuthenticatedData,
+	generateAuthTokens,
+	generateOTP,
+	grabUserIdFromAuthId,
+} from "#helpers/auth/index";
+import { TTL } from "#constants/ttl.constant";
+import {
+	throwBadRequestError,
+	throwUnauthorizedError,
+} from "#helpers/errors/throw-error";
+import { getInstructorByEmail } from "#helpers/instructor/index";
+import { getParentByEmail } from "#helpers/parent/index";
+import { getStudentByEmail } from "#helpers/student/index";
+import { Instructor } from "#modules/instructor/instructor.model";
+import { InstructorService } from "#modules/instructor/instructor.service";
+import { Parent } from "#modules/parent/parent.model";
+import { ParentService } from "#modules/parent/parent.service";
+import { Student } from "#modules/student/student.model";
+import { StudentService } from "#modules/student/student.service";
+import { CacheService } from "#services/cache.service";
+import { EncryptionService } from "#services/encryption.service";
+import { JwtService } from "#services/jwt.service";
+import { EmailQueueService } from "#services/queues/email.queue.service";
+import { FacebookOAuthService } from "./oauth/facebook.oauth.service.js";
+import { GoogleOAuthService } from "./oauth/google.oauth.service.js";
+
+export class AuthService {
+	static instance = null;
+
+	/** @returns {AuthService} */
+	static getInstance() {
+		if (!AuthService.instance) {
+			AuthService.instance = new AuthService();
+		}
+		return AuthService.instance;
+	}
+
+	/** @private */
+	constructor() {
+		/** Services */
+		this.instructorService = InstructorService.getInstance();
+		this.parentService = ParentService.getInstance();
+		this.studentService = StudentService.getInstance();
+
+		this.emailQueueService = EmailQueueService.getInstance();
+		this.jwtService = JwtService.getInstance();
+		this.encryptionService = EncryptionService.getInstance();
+		this.cacheService = CacheService.getInstance();
+
+		this.googleOAuthService = GoogleOAuthService.getInstance();
+		this.facebookOAuthService = FacebookOAuthService.getInstance();
+
+		/** Models */
+		this.instructorModel = Instructor;
+		this.parentModel = Parent;
+		this.studentModel = Student;
+	}
+
+	register = async (data) => {
+		switch (data.userType) {
+			case UserTypes.INSTRUCTOR:
+				return this.instructorService.register(data);
+			case UserTypes.PARENT:
+				return this.parentService.register(data);
+			case UserTypes.STUDENT:
+				return this.studentService.register(data);
+			default:
+				throwBadRequestError(`Invalid user type: ${data.userType}`);
+		}
+	};
+
+	login = async (data) => {
+		switch (data.userType) {
+			case UserTypes.INSTRUCTOR:
+				return this.instructorService.login(data);
+			case UserTypes.PARENT:
+				return this.parentService.login(data);
+			case UserTypes.STUDENT:
+				return this.studentService.login(data);
+			default:
+				throwBadRequestError(`Invalid user type: ${data.userType}`);
+		}
+	};
+
+	refresh = async (refreshToken) => {
+		const decoded = this.jwtService.verifyToken(refreshToken);
+		const { userId, userType, refreshId } = decoded;
+		if (!refreshId) throwUnauthorizedError("Invalid refresh token.");
+		if (!userId || !userType) throwUnauthorizedError("Invalid refresh token.");
+
+		if (!(await this.cacheService.redis.exists(refreshId)))
+			throwBadRequestError("Refresh token expired.");
+		await this.cacheService.delete(refreshId);
+
+		const tokens = await generateAuthTokens(userId, userType);
+		return tokens;
+	};
+
+	/**
+	 * @info - Delete's refresh token from redis so the user wouldn't be able to use it to generate new access tokens. Effectively logs the user out.
+	 * @param {string} refreshToken - The refresh token to be invalidated.
+	 * @param {*} refreshToken
+	 */
+	logout = async (refreshToken) => {
+		try {
+			const { refreshId } = this.jwtService.verifyToken(refreshToken);
+			if (refreshId) {
+				await this.cacheService.delete(refreshId);
+			}
+		} catch {
+			// Token might be expired/invalid on logout - that's fine
+		}
+	};
+
+	logoutAll = async (refreshToken) => {
+		try {
+			const { userId } = this.jwtService.verifyToken(refreshToken);
+			if (!userId) return;
+
+			const pattern = `refresh:${userId}-*`;
+			let cursor = "0";
+
+			do {
+				const [nextCursor, keys] = await this.cacheService.redis.scan(
+					cursor,
+					"MATCH",
+					pattern,
+					"COUNT",
+					100,
+				);
+				cursor = nextCursor;
+
+				if (keys.length > 0) {
+					await this.cacheService.redis.del(...keys);
+				}
+			} while (cursor !== "0");
+		} catch {
+			// Token might be expired/invalid - that's fine
+		}
+	};
+
+	verifyEmail = async (data, otpCode) => {
+		const { authId, userType, otpId, action, ...rest } = data;
+
+		const otp = await this.cacheService.get(otpId);
+
+		if (!action) throwBadRequestError("Invalid request action.");
+		if (!otp) throwBadRequestError("Invalid or expired verification link.");
+
+		if (this.encryptionService.decrypt(otp.otp) !== otpCode)
+			throwBadRequestError("Invalid code. Please try again.");
+
+		let user;
+
+		if (action === JwtAction.VERIFY_EMAIL) {
+			const { firstName, lastName, email, password } = rest;
+			switch (userType) {
+				case UserTypes.INSTRUCTOR: {
+					const instructor = await this.instructorModel.create({
+						firstName,
+						lastName,
+						email,
+					});
+
+					await instructor.setPassword(
+						this.encryptionService.decrypt(password),
+					);
+					user = instructor;
+					break;
+				}
+				case UserTypes.PARENT: {
+					const parent = await this.parentModel.create({
+						firstName,
+						lastName,
+						email,
+					});
+
+					await parent.setPassword(this.encryptionService.decrypt(password));
+					user = parent;
+					break;
+				}
+				case UserTypes.STUDENT: {
+					const student = await this.studentModel.create({
+						firstName,
+						lastName,
+						email,
+					});
+
+					await student.setPassword(this.encryptionService.decrypt(password));
+					user = student;
+					break;
+				}
+				default:
+					throwUnauthorizedError("Invalid user type.");
+			}
+
+			user.emailVerified = true;
+			user.emailVerifiedAt = new Date();
+			user.lastLoginAt = new Date();
+		} else if (action === JwtAction.AUTHENTICATE) {
+			const { email } = rest;
+			switch (userType) {
+				case UserTypes.INSTRUCTOR:
+					user = await getInstructorByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				case UserTypes.PARENT:
+					user = await getParentByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				case UserTypes.STUDENT:
+					user = await getStudentByEmail(email);
+					user.lastLoginAt = new Date();
+					break;
+				default:
+					throwUnauthorizedError("Invalid user type.");
+			}
+		}
+
+		const savedData = await user.save();
+		user = generateAuthenticatedData(savedData.toObject());
+
+		if (action === JwtAction.VERIFY_EMAIL)
+			await this.emailQueueService.add(EmailJobNames.WELCOME, {
+				message: {
+					to: user.email,
+					subject: "Welcome to the Hive",
+				},
+				template: "welcome",
+				locals: {
+					name: user.firstName,
+				},
+			});
+
+		await this.cacheService.delete(otpId);
+		const gen_tokens = await generateAuthTokens(user._id.toString(), user.userType);
+
+		return { user, ...gen_tokens };
+	};
+
+	resendOtp = async (authData) => {
+		const { otpId, email, firstName } = authData;
+
+		if (!otpId || !email) throwBadRequestError("Invalid session.");
+
+		const existing = await this.cacheService.get(otpId);
+		if (existing?.lastSentAt) {
+			const elapsed = Date.now() - existing.lastSentAt;
+			if (elapsed < 60_000) {
+				return { retryAfter: Math.ceil((60_000 - elapsed) / 1000) };
+			}
+		}
+
+		const otp = generateOTP();
+
+		await this.cacheService.set(
+			otpId,
+			{ otp: this.encryptionService.encrypt(otp), lastSentAt: Date.now() },
+			TTL.IN_30_MINUTES,
+		);
+
+		this.emailQueueService.add(EmailJobNames.VERIFY_OTP, {
+			message: { to: email, subject: "Your verification code" },
+			template: "verify-otp",
+			locals: { otp, name: firstName, expiryMinutes: 30 },
+		});
+
+		return { retryAfter: 60 };
+	};
+
+	/** @info - OAuth */
+	authenticateWithGoogle = async (data) => {
+		return this.googleOAuthService.authenticate(data.userType, data.action);
+	};
+
+	loginWithGoogle = async (data) => {
+		return this.googleOAuthService.login(data.code, data.state);
+	};
+
+	signupWithGoogle = async (data) => {
+		return this.googleOAuthService.signup(data.code, data.state);
+	};
+
+	/** @info - Facebook OAuth */
+	authenticateWithFacebook = async (data) => {
+		return this.facebookOAuthService.authenticate(data.userType, data.action);
+	};
+
+	loginWithFacebook = async (data) => {
+		return this.facebookOAuthService.login(data.code, data.state);
+	};
+
+	signupWithFacebook = async (data) => {
+		return this.facebookOAuthService.signup(data.code, data.state);
+	};
+}

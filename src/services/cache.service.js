@@ -1,0 +1,72 @@
+import Redis from "ioredis";
+import { config } from "#config/config";
+import { TTL } from "#constants/ttl.constant";
+import { logger } from "#utils/logger";
+
+export class CacheService {
+	static instance = null;
+
+	/** @returns {CacheService} */
+	static getInstance() {
+		if (!CacheService.instance) {
+			CacheService.instance = new CacheService();
+		}
+		return CacheService.instance;
+	}
+
+	/**
+	 * @private
+	 * @info - Please always use .getInstance() to get the instance of the CacheService.
+	 * */
+	constructor() {
+		this.redis = new Redis(config.redis.uri, {
+			maxRetriesPerRequest: null,
+			enableReadyCheck: false,
+		});
+		this.listen();
+	}
+
+	/** @info - Just to listen to connected events */
+	listen = async () => {
+		this.redis.on("connect", () => {
+			logger.info("Connected to Redis 🗑️");
+		});
+
+		this.redis.on("error", (error) => {
+			logger.error("Redis connection error", error);
+		});
+	};
+
+	/** @returns {Redis} */
+	static getRedisClient = () => {
+		const redis = CacheService.getInstance();
+		return redis.redis;
+	};
+
+	set = async (key, value, ttl = TTL.IN_30_MINUTES) => {
+		await this.redis.set(key, JSON.stringify(value), "EX", ttl);
+	};
+
+	get = async (key) => {
+		const value = await this.redis.get(key);
+		return value ? JSON.parse(value) : null;
+	};
+
+	delete = async (key) => {
+		await this.redis.del(key);
+	};
+
+	deleteMany = async (keys) => {
+		keys = Array.isArray(keys) ? keys : [keys];
+		if (keys.length === 0) return;
+		await this.redis.del(...keys);
+	};
+
+	disconnect = async () => {
+		await this.redis.quit();
+	};
+
+	flush = async () => {
+		await this.redis.flushall();
+	};
+}

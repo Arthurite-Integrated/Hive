@@ -1,0 +1,50 @@
+import Router from "express";
+import { authenticate } from "#middlewares/authenticate";
+import { ZodEngine } from "#validator/engine/zod.engine";
+import { changePasswordSchema } from "#validator/user/change-password.schema";
+import { onboardSchema } from "#validator/user/onboard.schema";
+import {
+	linkStudentSchema,
+	linkIdParamSchema,
+} from "#validator/user/parent-student-link.schema";
+import { updateProfileSchema } from "#validator/user/update-profile.schema";
+import { ParentController } from "./parent.controller.js";
+
+export const parentRouter = Router();
+const zodEngine = ZodEngine.getInstance();
+
+const controller = ParentController.getInstance();
+
+parentRouter.use(authenticate);
+
+parentRouter.get("/me", controller.getProfile);
+parentRouter.patch(
+	"/me",
+	zodEngine.validate.body(updateProfileSchema),
+	controller.update,
+);
+parentRouter.patch(
+	"/me/password",
+	zodEngine.validate.body(changePasswordSchema),
+	controller.updatePassword,
+);
+parentRouter.delete("/me", controller.delete);
+parentRouter.post("/me/profile-photo", controller.updateAvatar);
+parentRouter.patch(
+	"/me/onboard",
+	zodEngine.validate.body(onboardSchema),
+	controller.onboard,
+);
+
+/** @info - Parent-Student linking */
+parentRouter.post(
+	"/me/link-student",
+	zodEngine.validate.body(linkStudentSchema),
+	controller.linkStudent,
+);
+parentRouter.get("/me/linked-students", controller.getLinkedStudents);
+parentRouter.delete(
+	"/me/links/:linkId",
+	zodEngine.validate.params(linkIdParamSchema),
+	controller.revokeLink,
+);
