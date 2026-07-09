@@ -16,11 +16,17 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(cookieParser());
 
-const allowedOrigins = ["http://localhost:3005"]; // Your frontend URL
+const allowedOrigins = [
+	"http://localhost:3005",
+	"http://localhost:3000",
+	"http://172.20.10.10:3000",
+	"http://34.197.98.252:3000",
+	"http://34.197.98.252:80",
+]; // Your frontend URL
 
 app.use(
 	cors({
-		origin: function (origin, callback) {
+		origin: (origin, callback) => {
 			// Allow requests with no origin (like mobile apps, curl, or Postman)
 			if (!origin) return callback(null, true);
 
