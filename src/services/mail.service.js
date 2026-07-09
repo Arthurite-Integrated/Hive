@@ -116,17 +116,3 @@ export class EmailService {
 		}
 	};
 }
-
-const e = EmailService.getInstance();
-await e.send({
-	template: "welcome",
-	locals: {
-		name: "Spectra",
-	},
-	message: {
-		to: "sarafasatar@gmail.com",
-		subject: "Hi testing",
-		bodyMode: "text",
-		text: "Hi",
-	},
-});
