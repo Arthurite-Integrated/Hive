@@ -95,8 +95,24 @@ const LessonSchema = new Schema(
 		pdfUrl: String,
 		pdfKey: String,
 
+		// Drive lesson (embedded)
+		driveLesson: {
+			type: {
+				driveUrl: String,
+				driveFileId: String,
+				driveFileName: String,
+				driveFileType: String,
+			},
+		},
+
 		// Text lesson
 		textContent: String,
+
+		// Flat drive fields
+		driveUrl: String,
+		driveFileId: String,
+		driveFileName: String,
+		driveFileType: String,
 
 		// Flat live fields
 		scheduledAt: Date,

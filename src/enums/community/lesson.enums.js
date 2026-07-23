@@ -5,6 +5,7 @@ export const LESSON_TYPE = {
 	LIVE: "live",
 	QUIZ: "quiz",
 	ASSIGNMENT: "assignment",
+	DRIVE: "drive",
 };
 
 export const LESSON_STATUS = {

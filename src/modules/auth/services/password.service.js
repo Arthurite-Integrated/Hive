@@ -35,7 +35,7 @@ export class PasswordService {
 			TTL.IN_10_MINUTES,
 		);
 
-		this.emailQueueService.add(EmailJobNames.VERIFY_OTP, {
+		this.emailQueueService.add(EmailJobNames.RESET_PASSWORD, {
 			message: { to: email, subject: "Reset your password" },
 			template: "reset-password",
 			locals: { otp, name: user.firstName, expiryMinutes: 10 },

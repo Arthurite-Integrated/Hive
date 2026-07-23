@@ -18,7 +18,7 @@ export const reorderSchema = z.object({
 
 export const createLessonSchema = z.object({
 	title: z.string().min(1).max(200),
-	type: z.enum(["video", "pdf", "text", "live", "quiz", "assignment"]),
+	type: z.enum(["video", "pdf", "text", "live", "quiz", "assignment", "drive"]),
 });
 
 export const updateLessonSchema = z.object({
@@ -31,6 +31,7 @@ export const updateLessonSchema = z.object({
 	platform: z.enum(["zoom", "meet", "teams", "other"]).optional(),
 	status: z.enum(["draft", "published"]).optional(),
 	textContent: z.string().optional(),
+	driveUrl: z.string().url().optional(),
 });
 
 export const videoUploadSchema = z.object({

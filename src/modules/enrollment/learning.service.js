@@ -113,6 +113,16 @@ export class LearningService {
 			}
 		}
 
+		if (obj.type === "drive") {
+			// Build embed URL from file ID, fall back to raw driveUrl
+			const fileId = obj.driveFileId;
+			if (fileId) {
+				obj.driveEmbedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+			} else {
+				obj.driveEmbedUrl = obj.driveUrl ?? null;
+			}
+		}
+
 		return obj;
 	};
 

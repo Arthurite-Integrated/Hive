@@ -11,6 +11,28 @@ import { config } from "#config/config";
 
 const MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB
 
+/**
+ * Extract the Google Drive file ID from a share URL.
+ * Supports: /file/d/{id}/, /open?id={id}, /d/{id}/
+ */
+function extractDriveFileId(url) {
+	try {
+		const u = new URL(url);
+		// Pattern: /file/d/{fileId}/
+		const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
+		if (fileMatch) return fileMatch[1];
+		// Pattern: /open?id={fileId}
+		const openId = u.searchParams.get("id");
+		if (openId) return openId;
+		// Pattern: /d/{fileId}/
+		const dMatch = u.pathname.match(/\/d\/([^/]+)/);
+		if (dMatch) return dMatch[1];
+		return null;
+	} catch {
+		return null;
+	}
+}
+
 export class BuilderService {
 	static instance = null;
 
@@ -150,10 +172,23 @@ export class BuilderService {
 			"pdfUrl",
 			"pdfKey",
 			"textContent",
+			"driveUrl",
 		];
 		for (const field of ALLOWED) {
 			if (data[field] !== undefined) {
 				lesson[field] = data[field];
+			}
+		}
+
+		// Extract Google Drive file ID from driveUrl
+		if (data.driveUrl) {
+			const fileId = extractDriveFileId(data.driveUrl);
+			if (fileId) {
+				lesson.driveFileId = fileId;
+			} else {
+				throwBadRequestError(
+					"Invalid Google Drive URL. Please provide a valid Google Drive share link.",
+				);
 			}
 		}
 
@@ -177,6 +212,11 @@ export class BuilderService {
 			if (lesson.type === "text" && !lesson.textContent?.trim()) {
 				throwBadRequestError(
 					"Text content is required before publishing a text lesson.",
+				);
+			}
+			if (lesson.type === "drive" && !lesson.driveUrl?.trim()) {
+				throwBadRequestError(
+					"A Google Drive link is required before publishing this lesson.",
 				);
 			}
 			lesson.status = "published";
