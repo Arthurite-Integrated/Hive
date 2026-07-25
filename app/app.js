@@ -24,6 +24,7 @@ const allowedOrigins = [
 	"http://34.197.98.252:80",
 	"https://tryhive.app",
 	"https://www.tryhive.app",
+	"https://staging.tryhive.app",
 ]; // Your frontend URL
 
 app.use(
