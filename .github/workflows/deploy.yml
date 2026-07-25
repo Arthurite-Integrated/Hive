@@ -1,8 +1,11 @@
-name: Deploy Hive to EC2
+name: Deploy Hive Backend to EC2
+
 on:
   push:
     branches:
       - main
+      - staging
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -19,6 +22,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Set deployment target
+        id: target
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            echo "remote_dir=hive-backend" >> "$GITHUB_OUTPUT"
+            echo "ecosystem_file=ecosystem.config.cjs" >> "$GITHUB_OUTPUT"
+          else
+            echo "remote_dir=staging/hive-backend" >> "$GITHUB_OUTPUT"
+            echo "ecosystem_file=ecosystem.staging.config.cjs" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
@@ -26,19 +40,23 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
 
+      - name: Ensure remote directory exists
+        run: |
+          ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} "mkdir -p ~/${{ steps.target.outputs.remote_dir }}"
+
       - name: Deploy to EC2
         run: |
           rsync -avz --delete \
             --exclude '.env' --exclude '.env.*' --exclude '*.env' \
             --exclude 'logs' --exclude 'node_modules' --exclude '.github' --exclude '.secrets' \
-            ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/home/${{ secrets.EC2_USER }}/hive-backend
+            ./ ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/${{ steps.target.outputs.remote_dir }}
 
       - name: Restart server
         run: |
           ssh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            cd ~/hive-backend
+            cd ~/${{ steps.target.outputs.remote_dir }}
             npm ci
-            npx pm2 restart ecosystem.config.cjs || npx pm2 start ecosystem.config.cjs
+            npx pm2 restart ${{ steps.target.outputs.ecosystem_file }} || npx pm2 start ${{ steps.target.outputs.ecosystem_file }}
           EOF
