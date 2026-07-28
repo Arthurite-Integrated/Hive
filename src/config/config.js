@@ -92,6 +92,10 @@ export const config = {
 		endpoint: env.AWS_S3_ENDPOINT,
 	},
 
+	payment: {
+		platformFeeRate: env.PAYMENT_PLATFORM_FEE_RATE,
+	},
+
 	paystack: {
 		secretKey: env.PAYSTACK_SECRET_KEY,
 		publicKey: env.PAYSTACK_PUBLIC_KEY,

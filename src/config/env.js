@@ -81,6 +81,8 @@ const EnvSchema = z.object({
 	RESEND_API_KEY: z.string().optional(),
 	RESEND_EMAIL: z.string().optional(),
 
+	PAYMENT_PLATFORM_FEE_RATE: z.coerce.number().default(0.05),
+
 	FEATURE_PAYMENTS: boolStr,
 	FEATURE_LIVE_CLASSES: boolStr,
 	FEATURE_CERTIFICATES: boolStr,

@@ -8,8 +8,9 @@ import { Enrollment } from "#models/enrollment/enrollment.model";
 import { CommunityMember } from "#models/community-member.model";
 import { TeacherBalance } from "#models/payment/teacher-balance.model";
 import { logger } from "#utils/logger";
+import { config } from "#config/config";
 
-const PLATFORM_FEE_RATE = 0.1; // 10% platform cut
+const PLATFORM_FEE_RATE = config.payment.platformFeeRate;
 
 export class PaymentWorkerService {
 	static instance = null;
