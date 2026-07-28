@@ -10,17 +10,14 @@ import { logger } from "#utils/logger";
 export class EmailService {
 	static instance;
 
-	domain = "reports.arthuriteintegratedgroup.com";
 	apiKey = config.resend.apiKey;
+	fromEmail = config.resend.email || "no-reply@hive.edu";
 
 	logger = logger;
 
 	resend;
 
-	sender = `no-reply@${this.domain}`;
-
 	/**
-	 * @info - Gets Singleton instance
 	 * @returns {EmailService}
 	 */
 	static getInstance() {
@@ -30,7 +27,6 @@ export class EmailService {
 		return EmailService.instance;
 	}
 
-	/* @todo - `no-reply@${config.server.serverDomain}` */
 	constructor() {
 		this.resend = new Resend(this.apiKey);
 	}
@@ -62,7 +58,6 @@ export class EmailService {
 	 * @throws {Error} If no template is provided or the template file is not found
 	 */
 	send = async (options) => {
-		console.log(this.domain, this.apiKey, this.sender);
 		if (!options.template) throw new Error("Email template is required.");
 
 		const templateContent = await this.getTemplate(options.template);
@@ -71,8 +66,8 @@ export class EmailService {
 
 		const params = {
 			from: options.identifier
-				? `${options.identifier}@${this.domain}`
-				: this.sender,
+				? `${options.identifier}@${this.fromEmail.split("@")[1]}`
+				: this.fromEmail,
 			to: options.message.to,
 			subject: options.message.subject,
 			cc: options.message?.cc,
