@@ -1,17 +1,14 @@
 import { google } from "googleapis";
 import { config } from "#config/config";
-import { TTL } from "#constants/ttl.constant";
-import { AuthMethods, GoogleOAuthAction } from "#enums/auth/index";
+import { AuthMethods } from "#enums/auth/index";
 import { UserTypes } from "#enums/user.enums";
 import {
 	generateAuthenticatedData,
-	generateAuthId,
 	generateAuthTokens,
 } from "#helpers/auth/index";
 import { throwBadRequestError } from "#helpers/errors/throw-error";
 import { decodeBase64, generateBase64 } from "#helpers/index";
 import { BaseOAuthService } from "#services/bases/base.oauth.service";
-import { CacheService } from "#services/cache.service";
 import { JwtService } from "#services/jwt.service";
 import { Instructor } from "#modules/instructor/instructor.model";
 import { Parent } from "#modules/parent/parent.model";
@@ -31,12 +28,10 @@ export class GoogleOAuthService extends BaseOAuthService {
 	constructor() {
 		super();
 		this.google = google;
-		this.googleLoginAuth = this.#createOAuth2Client(GoogleOAuthAction.LOGIN);
-		this.googleSignupAuth = this.#createOAuth2Client(GoogleOAuthAction.SIGNUP);
+		this.client = this.#createOAuth2Client();
 		this.googleAuth = new this.google.auth.OAuth2();
 
 		this.jwtService = JwtService.getInstance();
-		this.cacheService = CacheService.getInstance();
 	}
 
 	/** @returns {GoogleOAuthService} */
@@ -49,26 +44,20 @@ export class GoogleOAuthService extends BaseOAuthService {
 
 	// ── Private Helpers ─────────────────────────────────────────
 
-	#createOAuth2Client(action) {
+	#createOAuth2Client() {
 		return new google.auth.OAuth2(
 			config.google.clientId,
 			config.google.clientSecret,
-			this.#buildRedirectUrl(action),
+			this.#buildRedirectUrl(),
 		);
 	}
 
-	#buildRedirectUrl(action) {
+	#buildRedirectUrl() {
 		const base =
 			config.env === "development"
 				? "http://127.0.0.1:3000"
 				: `https://${config.server.serverDomain}`;
-		return `${base}/api/v1/auth/google/${action}/callback`;
-	}
-
-	#getOAuth2ClientForAction(action) {
-		if (action === GoogleOAuthAction.LOGIN) return this.googleLoginAuth;
-		if (action === GoogleOAuthAction.SIGNUP) return this.googleSignupAuth;
-		throwBadRequestError("Invalid action.");
+		return `${base}/api/v1/auth/google/callback`;
 	}
 
 	#resolveModelAndLabel(userType) {
@@ -77,8 +66,8 @@ export class GoogleOAuthService extends BaseOAuthService {
 		return entry;
 	}
 
-	async #exchangeCodeForUserInfo(oauthClient, code) {
-		const { tokens } = await oauthClient.getToken(code);
+	async #exchangeCodeForUserInfo(code) {
+		const { tokens } = await this.client.getToken(code);
 		this.googleAuth.setCredentials({ access_token: tokens.access_token });
 		const { data: userInfo } = await this.google
 			.oauth2("v2")
@@ -102,7 +91,10 @@ export class GoogleOAuthService extends BaseOAuthService {
 		delete user.google;
 		user = generateAuthenticatedData(user);
 
-		const gen_tokens = await generateAuthTokens(user._id.toString(), user.userType);
+		const gen_tokens = await generateAuthTokens(
+			user._id.toString(),
+			user.userType,
+		);
 
 		return { user, gen_tokens };
 	}
@@ -117,9 +109,11 @@ export class GoogleOAuthService extends BaseOAuthService {
 		return data;
 	};
 
-	authenticate = async (userType, action) => {
-		const client = this.#getOAuth2ClientForAction(action);
-		return client.generateAuthUrl({
+	/**
+	 * Generate Google OAuth URL. State encodes the userType.
+	 */
+	authenticate = async (userType) => {
+		return this.client.generateAuthUrl({
 			access_type: "offline",
 			prompt: "consent",
 			scope: [
@@ -130,18 +124,19 @@ export class GoogleOAuthService extends BaseOAuthService {
 		});
 	};
 
-	signup = async (code, state) => {
+	/**
+	 * Unified callback — handles both login (existing user) and signup (new user).
+	 * Bloom pattern: single callback, state-encoded userType, credential-linking ready.
+	 */
+	callback = async (code, state) => {
 		const userType = decodeBase64(state);
 		const { model, label } = this.#resolveModelAndLabel(userType);
 
 		let tokens, userInfo;
 		try {
-			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
-				this.googleSignupAuth,
-				code,
-			));
+			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(code));
 		} catch (err) {
-			console.error(err);
+			console.error("Google OAuth token exchange failed:", err);
 			return oauthResponsePage({
 				title: "OAuth Authentication Error",
 				message: "Failed to authenticate with Google. Please try again.",
@@ -150,87 +145,47 @@ export class GoogleOAuthService extends BaseOAuthService {
 			});
 		}
 
-		const existing = await model.findOne({ email: userInfo.email });
-		if (existing) {
-			return oauthResponsePage({
-				title: "Account Already Exists",
-				message: `A ${label} account with this email already exists. Please proceed to login.`,
-				status: "error",
-				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
-			});
-		}
+		// Check if a user with this email already exists
+		const existingUser = await model.findOne({ email: userInfo.email });
+		let isNewUser = false;
+		let user;
 
-		const user = await model.create({
-			firstName: userInfo.given_name,
-			lastName: userInfo.family_name,
-			email: userInfo.email,
-			authMethod: AuthMethods.GOOGLE,
-			profilePhoto: userInfo.picture,
-			google: this.#buildGoogleCredentials(tokens),
-			emailVerified: true,
-			emailVerifiedAt: new Date(),
-			lastLoginAt: new Date(),
-		});
+		if (existingUser) {
+			// Existing user — must have Google authMethod to login with Google
+			if (existingUser.authMethod !== AuthMethods.GOOGLE) {
+				return oauthResponsePage({
+					title: "Account Not Linked",
+					message: `A ${label} account with this email already exists. Please login using your email and password, then link your Google account from settings.`,
+					status: "error",
+					payload: { type: "oauth_error", code: "ACCOUNT_NOT_LINKED" },
+				});
+			}
+
+			// Update tokens and login
+			existingUser.google = this.#buildGoogleCredentials(tokens);
+			existingUser.lastLoginAt = new Date();
+			await existingUser.save();
+			user = existingUser;
+		} else {
+			// New user — signup via Google
+			user = await model.create({
+				firstName: userInfo.given_name,
+				lastName: userInfo.family_name,
+				email: userInfo.email,
+				authMethod: AuthMethods.GOOGLE,
+				profilePhoto: userInfo.picture,
+				google: this.#buildGoogleCredentials(tokens),
+				emailVerified: true,
+				emailVerifiedAt: new Date(),
+				lastLoginAt: new Date(),
+			});
+			isNewUser = true;
+		}
 
 		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
 
 		return oauthResponsePage({
-			title: "Welcome to Hive 😊",
-			message: `Signed in as ${sessionUser.email}`,
-			status: "success",
-			autoClose: true,
-			payload: { type: "oauth_success", user: sessionUser, ...gen_tokens },
-		});
-	};
-
-	login = async (code, state) => {
-		const userType = decodeBase64(state);
-		const { model, label } = this.#resolveModelAndLabel(userType);
-
-		let tokens, userInfo;
-		try {
-			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
-				this.googleLoginAuth,
-				code,
-			));
-		} catch (err) {
-			console.error(err);
-			return oauthResponsePage({
-				title: "OAuth Authentication Error",
-				message: "Failed to authenticate with Google. Please try again.",
-				status: "error",
-				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
-			});
-		}
-
-		const user = await model.findOne({ email: userInfo.email });
-
-		if (!user) {
-			return oauthResponsePage({
-				title: "Account Not Found",
-				message: `No ${label} account found with this email. Please sign up first.`,
-				status: "error",
-				payload: { type: "oauth_error", code: "ACCOUNT_NOT_FOUND" },
-			});
-		}
-
-		if (user.authMethod !== AuthMethods.GOOGLE) {
-			return oauthResponsePage({
-				title: "OAuth Account Error",
-				message: `This ${label} account is not linked with Google. Login with email credentials.`,
-				status: "error",
-				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
-			});
-		}
-
-		user.google = this.#buildGoogleCredentials(tokens);
-		user.lastLoginAt = new Date();
-		await user.save();
-
-		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
-
-		return oauthResponsePage({
-			title: "Welcome Back",
+			title: isNewUser ? "Welcome to Hive 😊" : "Welcome Back",
 			message: `Signed in as ${sessionUser.email}`,
 			status: "success",
 			autoClose: true,
