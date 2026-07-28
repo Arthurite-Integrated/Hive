@@ -20,6 +20,9 @@ import { CacheService } from "#services/cache.service";
 import { EncryptionService } from "#services/encryption.service";
 import { JwtService } from "#services/jwt.service";
 import { EmailQueueService } from "#services/queues/email.queue.service";
+import { Instructor } from "#modules/instructor/instructor.model";
+import { Parent } from "#modules/parent/parent.model";
+import { Student } from "#modules/student/student.model";
 
 export class BaseUserService {
 	static instance = null;
@@ -50,8 +53,23 @@ export class BaseUserService {
 	};
 
 	register = async (data) => {
-		if (await this.dbModel.findOne({ email: data.email }))
-			throwBadRequestError("Email already exists");
+		// Prevent the same email from registering across Student, Instructor, and Parent
+		const [existingSame, existingStudent, existingInstructor, existingParent] =
+			await Promise.all([
+				this.dbModel.findOne({ email: data.email }),
+				this.modelName !== UserTypes.STUDENT
+					? Student.findOne({ email: data.email })
+					: null,
+				this.modelName !== UserTypes.INSTRUCTOR
+					? Instructor.findOne({ email: data.email })
+					: null,
+				this.modelName !== UserTypes.PARENT
+					? Parent.findOne({ email: data.email })
+					: null,
+			]);
+
+		if (existingSame || existingStudent || existingInstructor || existingParent)
+			throwBadRequestError("An account with this email already exists.");
 		const authId = generateAuthId();
 		const otpId = generateOTPId();
 		const otp = generateOTP();
