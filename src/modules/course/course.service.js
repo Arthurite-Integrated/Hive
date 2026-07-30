@@ -113,7 +113,6 @@ export class CourseService {
 	getById = async (courseId, requesterId) => {
 		const course = await Course.findOne({
 			_id: courseId,
-			status: { $ne: "archived" },
 		}).lean();
 		if (!course) throwNotFoundError("Course not found.");
 

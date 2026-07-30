@@ -54,7 +54,9 @@ export class ParentService extends BaseUserService {
 				existing.requestedAt = new Date();
 				link = await existing.save();
 			}
-		} else {
+		}
+
+		if (!link) {
 			link = await ParentStudentLink.create({
 				parentId,
 				studentId: student._id,
@@ -62,24 +64,28 @@ export class ParentService extends BaseUserService {
 			});
 		}
 
-		// Notify the student about the link request
-		const parent = await Parent.findById(parentId)
-			.select("firstName lastName")
-			.lean();
-		const parentName = parent
-			? `${parent.firstName} ${parent.lastName}`
-			: "A parent";
+		// Notify the student about the link request (fire-and-forget, never crash)
+		try {
+			const parent = await Parent.findById(parentId)
+				.select("firstName lastName")
+				.lean();
+			const parentName = parent
+				? `${parent.firstName} ${parent.lastName}`
+				: "A parent";
 
-		this.notificationService.send({
-			userId: student._id,
-			userType: "student",
-			type: NotificationType.PARENT_LINK,
-			title: "Parent Link Request",
-			body: `${parentName} wants to link to your account as your ${relationship}. You can approve or decline this request from your dashboard.`,
-			actionUrl: "/student/parents",
-			resourceType: "parent_link",
-			resourceId: link._id,
-		});
+			await this.notificationService.send({
+				userId: student._id,
+				userType: "student",
+				type: NotificationType.PARENT_LINK,
+				title: "Parent Link Request",
+				body: `${parentName} wants to link to your account as your ${relationship}. You can approve or decline this request from your dashboard.`,
+				actionUrl: "/student/parents",
+				resourceType: "parent_link",
+				resourceId: link._id,
+			});
+		} catch (err) {
+			console.error("Failed to send parent link notification:", err);
+		}
 
 		return link;
 	};
