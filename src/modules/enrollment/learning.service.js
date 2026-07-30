@@ -7,10 +7,12 @@ import { Module } from "#models/module.model";
 import { Lesson } from "#models/lesson.model";
 import { Enrollment } from "#models/enrollment/enrollment.model";
 import { LessonProgress } from "#models/enrollment/lesson-progress.model";
+import { Certificate } from "#models/certificate.model";
 import { S3Service } from "#services/s3.service";
 import { EmailQueueService } from "#services/queues/email.queue.service";
 import { EmailJobNames } from "#enums/queue/index";
 import { config } from "#config/config";
+import { getUserModel } from "#utils/user-model-router";
 
 export class LearningService {
 	static instance = null;
@@ -199,6 +201,15 @@ export class LearningService {
 		if (enrollment.progress === 100 && !enrollment.completedAt) {
 			enrollment.completedAt = now;
 
+			// Generate certificate (fire-and-forget)
+			this._generateCertificate(
+				studentId,
+				lesson.courseId,
+				enrollment._id,
+			).catch((err) =>
+				console.error("Failed to generate certificate:", err.message),
+			);
+
 			// Send course completion email (fire-and-forget)
 			this._sendCompletionEmail(studentId, lesson.courseId).catch((err) =>
 				console.error("Failed to send completion email:", err.message),
@@ -226,6 +237,43 @@ export class LearningService {
 	getLessonProgressForStudent = async (studentId, lessonId) => {
 		const doc = await LessonProgress.findOne({ studentId, lessonId }).lean();
 		return doc ?? { lessonId, progress: 0, lastPosition: 0, completed: false };
+	};
+
+	/** @private */
+	_generateCertificate = async (studentId, courseId, enrollmentId) => {
+		// Idempotency: one certificate per student per course
+		const existing = await Certificate.findOne({ studentId, courseId });
+		if (existing) return existing;
+
+		const [course, instructorModel] = await Promise.all([
+			Course.findById(courseId).select("title instructorId").lean(),
+			getUserModel("instructor"),
+		]);
+		if (!course) return;
+
+		const instructor = await instructorModel
+			.findById(course.instructorId)
+			.select("firstName lastName")
+			.lean();
+
+		const certNumber = `HIVE-CERT-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+		const verificationCode = `HC-${studentId.toString().slice(-6)}-${courseId.toString().slice(-4)}-${Date.now().toString(36).toUpperCase()}`;
+
+		const certificate = await Certificate.create({
+			studentId,
+			courseId,
+			enrollmentId,
+			certificateNumber: certNumber,
+			certificateUrl: `/certificates/${certNumber}`,
+			verificationCode,
+			courseName: course.title,
+			teacherName: instructor
+				? `${instructor.firstName} ${instructor.lastName}`
+				: "Hive Instructor",
+			completionDate: new Date(),
+		});
+
+		return certificate;
 	};
 
 	/** @private */

@@ -5,6 +5,7 @@ import { ZodEngine } from "#validator/engine/zod.engine";
 import { onboardSchema } from "#validator/user/onboard.schema";
 import { updateUserSchema } from "#validator/user/update-user.schema";
 import { UserController } from "./user.controller.js";
+import { CertificateService } from "#modules/certificate/certificate.service";
 
 export const userRouter = Router();
 
@@ -33,6 +34,14 @@ userRouter.patch(
 
 // GET /users/me/streak — learning streak for the current user
 userRouter.get("/me/streak", controller.getStreak);
+
+// GET /users/me/certificates — earned certificates
+userRouter.get("/me/certificates", async (req, res) => {
+	const data = await CertificateService.getInstance().getMyCertificates(
+		req.user._id,
+	);
+	return res.json({ success: true, ...data });
+});
 
 // GET /users/me/avatar/upload-url?contentType=image/jpeg — get presigned S3 URL
 userRouter.get("/me/avatar/upload-url", controller.getAvatarUploadUrl);
