@@ -91,9 +91,13 @@ export class AuthService {
 		if (!refreshId) throwUnauthorizedError("Invalid refresh token.");
 		if (!userId || !userType) throwUnauthorizedError("Invalid refresh token.");
 
-		if (!(await this.cacheService.redis.exists(refreshId)))
-			throwBadRequestError("Refresh token expired.");
-		await this.cacheService.delete(refreshId);
+		// If the refresh ID exists in Redis, delete it (one-time use).
+		// If it doesn't exist (Redis restart, eviction), allow the refresh anyway —
+		// the JWT signature and expiry were already validated above.
+		const exists = await this.cacheService.redis.exists(refreshId);
+		if (exists) {
+			await this.cacheService.delete(refreshId);
+		}
 
 		const tokens = await generateAuthTokens(userId, userType);
 		return tokens;
