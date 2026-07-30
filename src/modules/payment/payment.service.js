@@ -108,7 +108,7 @@ export class PaymentService {
 			currency: "NGN",
 			reference,
 			metadata: { userId, userType, targetType, targetId },
-			callbackUrl: `${config.server.serverDomain}/checkout/success?reference=${reference}`,
+			callbackUrl: `${config.server.rootDomain}/checkout/success?reference=${reference}`,
 		});
 
 		logger.info("Payment initialized", {
