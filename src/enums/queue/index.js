@@ -16,4 +16,6 @@ export const EmailJobNames = {
 	VERIFY_OTP: "verify-otp",
 	VERIFY_PHONE: "verify-phone",
 	VERIFY_SMS: "verify-sms",
+	ENROLLMENT_CONFIRMATION: "enrollment-confirmation",
+	COURSE_COMPLETION: "course-completion",
 };

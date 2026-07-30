@@ -8,6 +8,8 @@ import { Lesson } from "#models/lesson.model";
 import { Enrollment } from "#models/enrollment/enrollment.model";
 import { LessonProgress } from "#models/enrollment/lesson-progress.model";
 import { S3Service } from "#services/s3.service";
+import { EmailQueueService } from "#services/queues/email.queue.service";
+import { EmailJobNames } from "#enums/queue/index";
 import { config } from "#config/config";
 
 export class LearningService {
@@ -22,7 +24,9 @@ export class LearningService {
 	}
 
 	/** @private */
-	constructor() {}
+	constructor() {
+		this.emailQueueService = EmailQueueService.getInstance();
+	}
 
 	/**
 	 * Return full curriculum + per-lesson progress for the learning sidebar.
@@ -194,6 +198,11 @@ export class LearningService {
 		enrollment.lastAccessedAt = now;
 		if (enrollment.progress === 100 && !enrollment.completedAt) {
 			enrollment.completedAt = now;
+
+			// Send course completion email (fire-and-forget)
+			this._sendCompletionEmail(studentId, lesson.courseId).catch((err) =>
+				console.error("Failed to send completion email:", err.message),
+			);
 		}
 		await enrollment.save();
 
@@ -217,5 +226,28 @@ export class LearningService {
 	getLessonProgressForStudent = async (studentId, lessonId) => {
 		const doc = await LessonProgress.findOne({ studentId, lessonId }).lean();
 		return doc ?? { lessonId, progress: 0, lastPosition: 0, completed: false };
+	};
+
+	/** @private */
+	_sendCompletionEmail = async (studentId, courseId) => {
+		const { Student } = await import("#modules/student/student.model");
+		const [student, course] = await Promise.all([
+			Student.findById(studentId).select("firstName email").lean(),
+			Course.findById(courseId).select("title").lean(),
+		]);
+		if (!student || !course) return;
+
+		this.emailQueueService.add(EmailJobNames.COURSE_COMPLETION, {
+			message: {
+				to: student.email,
+				subject: `Congratulations! You completed ${course.title}!`,
+			},
+			template: "course-completion",
+			locals: {
+				name: student.firstName,
+				courseTitle: course.title,
+				certificateUrl: `${process.env.ROOT_DOMAIN || "https://tryhive.app"}/certificates`,
+			},
+		});
 	};
 }

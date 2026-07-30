@@ -8,6 +8,8 @@ import { Enrollment } from "#models/enrollment/enrollment.model";
 import { CommunityMember } from "#models/community-member.model";
 import { TeacherBalance } from "#models/payment/teacher-balance.model";
 import { logger } from "#utils/logger";
+import { EmailQueueService } from "#services/queues/email.queue.service";
+import { EmailJobNames } from "#enums/queue/index";
 
 const PLATFORM_FEE_RATE = 0.1; // 10% platform cut
 
@@ -24,6 +26,7 @@ export class PaymentWorkerService {
 
 	constructor(concurrency = 5) {
 		this.cacheService = CacheService.getInstance();
+		this.emailQueueService = EmailQueueService.getInstance();
 
 		this.worker = new Worker(
 			QueueNames.PAYMENT,
@@ -113,6 +116,11 @@ export class PaymentWorkerService {
 				paymentType: payment.paymentType || "one_time",
 				enrolledAt: new Date(),
 			});
+
+			// Send enrollment confirmation email (fire-and-forget)
+			this._sendEnrollmentEmail(studentId, course).catch((err) =>
+				logger.error("Failed to send enrollment email", { error: err.message }),
+			);
 		} else {
 			logger.info("Payment worker: enrollment already exists, skipping", {
 				studentId,
@@ -144,6 +152,28 @@ export class PaymentWorkerService {
 			studentId,
 			instructorShare,
 			platformFee,
+		});
+	};
+
+	/** @private */
+	_sendEnrollmentEmail = async (studentId, course) => {
+		const { Student } = await import("#modules/student/student.model");
+		const student = await Student.findById(studentId)
+			.select("firstName email")
+			.lean();
+		if (!student) return;
+
+		this.emailQueueService.add(EmailJobNames.ENROLLMENT_CONFIRMATION, {
+			message: {
+				to: student.email,
+				subject: `You're enrolled in ${course.title}!`,
+			},
+			template: "enrollment-confirmation",
+			locals: {
+				name: student.firstName,
+				courseTitle: course.title,
+				courseUrl: `${process.env.ROOT_DOMAIN || "https://tryhive.app"}/courses/${course._id}`,
+			},
 		});
 	};
 
