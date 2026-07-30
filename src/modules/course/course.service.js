@@ -81,7 +81,7 @@ export class CourseService {
 
 		const query = {
 			communityId: community._id,
-			status: status || { $in: ["draft", "published"] },
+			status: status || { $in: ["draft", "published", "archived"] },
 		};
 
 		const pageNum = Math.max(1, parseInt(page, 10) || 1);

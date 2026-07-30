@@ -103,7 +103,7 @@ export class UserService {
 		// Build the avatar URL — use CloudFront if configured, otherwise fall back to S3 key
 		const avatarUrl = config.aws.cloudfront.domain
 			? `https://${config.aws.cloudfront.domain}/${key}`
-			: key;
+			: `https://${config.aws.s3.bucket}.s3.${config.aws.region}.amazonaws.com/${key}`;
 
 		const Model = getUserModel(user.userType);
 		const updated = await Model.findByIdAndUpdate(
