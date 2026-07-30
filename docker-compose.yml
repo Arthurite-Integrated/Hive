@@ -59,6 +59,14 @@ services:
   #     interval: 10s
   #     timeout: 5s
   #     retries: 5
+  #
+  # @info - This is for developemnt only to expose our backend to the web
+  edge-endpoint:
+    container_name: hive-edge-endpoint
+    image: cloudflare/cloudflared:1895-8679787525ed
+    command: tunnel --no-autoupdate --url http://host.docker.internal:4000
+    profiles:
+      - dev
 
 volumes:
   mongodb_volume:

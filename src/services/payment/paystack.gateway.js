@@ -125,8 +125,10 @@ export class PaystackGateway extends PaymentGatewayInterface {
 	 */
 	verifyWebhookSignature(body, signature) {
 		const rawBody = Buffer.isBuffer(body) ? body : Buffer.from(body, "utf8");
+		// Paystack uses the SECRET KEY (not a separate webhook secret) to sign webhooks
+		const secret = config.paystack.webhookSecret || config.paystack.secretKey;
 		const expected = crypto
-			.createHmac("sha512", config.paystack.webhookSecret)
+			.createHmac("sha512", secret)
 			.update(rawBody)
 			.digest("hex");
 

@@ -56,6 +56,15 @@ paymentRouter.get(
 
 // ─── Paystack webhooks (no auth) ─────────────────────────────────────────────
 
+// Paystack sends a GET to verify the webhook URL exists before sending events
+paymentRouter.get("/payments/webhooks/paystack", (_req, res) => {
+	res.status(200).send("Webhook active");
+});
+
+paymentRouter.get("/payments/webhooks/paystack/transfer", (_req, res) => {
+	res.status(200).send("Webhook active");
+});
+
 paymentRouter.post(
 	"/payments/webhooks/paystack/transfer",
 	controller.paystackTransferWebhook,
