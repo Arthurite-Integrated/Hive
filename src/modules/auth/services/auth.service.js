@@ -5,7 +5,6 @@ import {
 	generateAuthenticatedData,
 	generateAuthTokens,
 	generateOTP,
-	grabUserIdFromAuthId,
 } from "#helpers/auth/index";
 import { TTL } from "#constants/ttl.constant";
 import {
@@ -237,7 +236,10 @@ export class AuthService {
 			});
 
 		await this.cacheService.delete(otpId);
-		const gen_tokens = await generateAuthTokens(user._id.toString(), user.userType);
+		const gen_tokens = await generateAuthTokens(
+			user._id.toString(),
+			user.userType,
+		);
 
 		return { user, ...gen_tokens };
 	};
@@ -274,27 +276,19 @@ export class AuthService {
 
 	/** @info - OAuth */
 	authenticateWithGoogle = async (data) => {
-		return this.googleOAuthService.authenticate(data.userType, data.action);
+		return this.googleOAuthService.authenticate(data.userType);
 	};
 
-	loginWithGoogle = async (data) => {
-		return this.googleOAuthService.login(data.code, data.state);
-	};
-
-	signupWithGoogle = async (data) => {
-		return this.googleOAuthService.signup(data.code, data.state);
+	googleCallback = async (data) => {
+		return this.googleOAuthService.callback(data.code, data.state);
 	};
 
 	/** @info - Facebook OAuth */
 	authenticateWithFacebook = async (data) => {
-		return this.facebookOAuthService.authenticate(data.userType, data.action);
+		return this.facebookOAuthService.authenticate(data.userType);
 	};
 
-	loginWithFacebook = async (data) => {
-		return this.facebookOAuthService.login(data.code, data.state);
-	};
-
-	signupWithFacebook = async (data) => {
-		return this.facebookOAuthService.signup(data.code, data.state);
+	facebookCallback = async (data) => {
+		return this.facebookOAuthService.callback(data.code, data.state);
 	};
 }

@@ -10,22 +10,16 @@ export const facebookRouter = Router();
 const authController = AuthController.getInstance();
 const zodEngine = ZodEngine.getInstance();
 
-// GET route to initiate Facebook OAuth (returns auth URL)
+// GET /auth/facebook — returns the Facebook OAuth URL
 facebookRouter.get(
 	"/",
 	zodEngine.validate.query(facebookAuthenticateSchema),
 	authController.facebookOAuth,
 );
 
-// GET routes for Facebook OAuth callbacks (Facebook sends GET requests)
+// GET /auth/facebook/callback — unified callback (handles login + signup)
 facebookRouter.get(
-	"/login/callback",
+	"/callback",
 	zodEngine.validate.query(facebookCallbackSchema),
-	authController.loginWithFacebook,
-);
-
-facebookRouter.get(
-	"/signup/callback",
-	zodEngine.validate.query(facebookCallbackSchema),
-	authController.signupWithFacebook,
+	authController.facebookCallback,
 );

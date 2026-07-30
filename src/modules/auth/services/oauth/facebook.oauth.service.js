@@ -1,17 +1,14 @@
 import axios from "axios";
 import { config } from "#config/config";
-import { TTL } from "#constants/ttl.constant";
-import { AuthMethods, FacebookOAuthAction } from "#enums/auth/index";
+import { AuthMethods } from "#enums/auth/index";
 import { UserTypes } from "#enums/user.enums";
 import {
 	generateAuthenticatedData,
-	generateAuthId,
 	generateAuthTokens,
 } from "#helpers/auth/index";
 import { throwBadRequestError } from "#helpers/errors/throw-error";
 import { decodeBase64, generateBase64 } from "#helpers/index";
 import { BaseOAuthService } from "#services/bases/base.oauth.service";
-import { CacheService } from "#services/cache.service";
 import { JwtService } from "#services/jwt.service";
 import { Instructor } from "#modules/instructor/instructor.model";
 import { Parent } from "#modules/parent/parent.model";
@@ -37,7 +34,6 @@ export class FacebookOAuthService extends BaseOAuthService {
 		this.graphApiVersion = "v18.0";
 
 		this.jwtService = JwtService.getInstance();
-		this.cacheService = CacheService.getInstance();
 	}
 
 	/** @returns {FacebookOAuthService} */
@@ -50,12 +46,12 @@ export class FacebookOAuthService extends BaseOAuthService {
 
 	// ── Private Helpers ─────────────────────────────────────────
 
-	#buildRedirectUrl(action) {
+	#buildRedirectUrl() {
 		const base =
 			config.env === "development"
 				? "http://localhost:3000"
 				: `https://${config.server.serverDomain}`;
-		return `${base}/api/v1/auth/facebook/${action}/callback`;
+		return `${base}/api/v1/auth/facebook/callback`;
 	}
 
 	#resolveModelAndLabel(userType) {
@@ -72,8 +68,8 @@ export class FacebookOAuthService extends BaseOAuthService {
 		};
 	}
 
-	async #exchangeCodeForUserInfo(code, action) {
-		const tokens = await this.getAccessToken(code, action);
+	async #exchangeCodeForUserInfo(code) {
+		const tokens = await this.getAccessToken(code);
 		const userInfo = await this.getUserInfoFromAccessToken(tokens.access_token);
 		return { tokens, userInfo };
 	}
@@ -83,21 +79,24 @@ export class FacebookOAuthService extends BaseOAuthService {
 		delete user.facebook;
 		user = generateAuthenticatedData(user);
 
-		const gen_tokens = await generateAuthTokens(user._id.toString(), user.userType);
+		const gen_tokens = await generateAuthTokens(
+			user._id.toString(),
+			user.userType,
+		);
 
 		return { user, gen_tokens };
 	}
 
 	// ── Public API ──────────────────────────────────────────────
 
-	getAccessToken = async (code, action) => {
+	getAccessToken = async (code) => {
 		try {
 			const response = await axios.post(
 				`https://graph.facebook.com/${this.graphApiVersion}/oauth/access_token`,
 				{
 					client_id: this.clientId,
 					client_secret: this.clientSecret,
-					redirect_uri: this.#buildRedirectUrl(action),
+					redirect_uri: this.#buildRedirectUrl(),
 					code,
 				},
 			);
@@ -149,37 +148,33 @@ export class FacebookOAuthService extends BaseOAuthService {
 		}
 	};
 
-	authenticate = async (userType, action) => {
+	/**
+	 * Generate Facebook OAuth URL. State encodes the userType.
+	 */
+	authenticate = async (userType) => {
 		const params = new URLSearchParams({
 			client_id: this.clientId,
-			redirect_uri: this.#buildRedirectUrl(action),
-			// scope: this.scope,
+			redirect_uri: this.#buildRedirectUrl(),
 			config_id: config.facebook.configId,
 			response_type: "code",
 			state: generateBase64(userType),
 		});
 
-		if (action === FacebookOAuthAction.SIGNUP) {
-			params.append("auth_type", "rerequest");
-		} else if (action !== FacebookOAuthAction.LOGIN) {
-			throwBadRequestError("Invalid action.");
-		}
-
 		return `https://www.facebook.com/${this.graphApiVersion}/dialog/oauth?${params.toString()}`;
 	};
 
-	signup = async (code, state) => {
+	/**
+	 * Unified callback — handles both login (existing user) and signup (new user).
+	 */
+	callback = async (code, state) => {
 		const userType = decodeBase64(state);
 		const { model, label } = this.#resolveModelAndLabel(userType);
 
 		let tokens, userInfo;
 		try {
-			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
-				code,
-				FacebookOAuthAction.SIGNUP,
-			));
+			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(code));
 		} catch (err) {
-			console.error(err);
+			console.error("Facebook OAuth exchange failed:", err);
 			return oauthResponsePage({
 				title: "OAuth Authentication Error",
 				message: "Failed to authenticate with Facebook. Please try again.",
@@ -188,87 +183,47 @@ export class FacebookOAuthService extends BaseOAuthService {
 			});
 		}
 
-		const existing = await model.findOne({ email: userInfo.email });
-		if (existing) {
-			return oauthResponsePage({
-				title: "Account Already Exists",
-				message: `A ${label} account with this email already exists. Please proceed to login.`,
-				status: "error",
-				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
-			});
-		}
+		// Check if a user with this email already exists
+		const existingUser = await model.findOne({ email: userInfo.email });
+		let isNewUser = false;
+		let user;
 
-		const user = await model.create({
-			firstName: userInfo.given_name,
-			lastName: userInfo.family_name,
-			email: userInfo.email,
-			authMethod: AuthMethods.FACEBOOK,
-			profilePhoto: userInfo.picture,
-			facebook: this.#buildFacebookCredentials(tokens),
-			emailVerified: true,
-			emailVerifiedAt: new Date(),
-			lastLoginAt: new Date(),
-		});
+		if (existingUser) {
+			// Existing user — must have Facebook authMethod to login with Facebook
+			if (existingUser.authMethod !== AuthMethods.FACEBOOK) {
+				return oauthResponsePage({
+					title: "Account Not Linked",
+					message: `A ${label} account with this email already exists. Please login using your email and password, then link your Facebook account from settings.`,
+					status: "error",
+					payload: { type: "oauth_error", code: "ACCOUNT_NOT_LINKED" },
+				});
+			}
+
+			// Update tokens and login
+			existingUser.facebook = this.#buildFacebookCredentials(tokens);
+			existingUser.lastLoginAt = new Date();
+			await existingUser.save();
+			user = existingUser;
+		} else {
+			// New user — signup via Facebook
+			user = await model.create({
+				firstName: userInfo.given_name,
+				lastName: userInfo.family_name,
+				email: userInfo.email,
+				authMethod: AuthMethods.FACEBOOK,
+				profilePhoto: userInfo.picture,
+				facebook: this.#buildFacebookCredentials(tokens),
+				emailVerified: true,
+				emailVerifiedAt: new Date(),
+				lastLoginAt: new Date(),
+			});
+			isNewUser = true;
+		}
 
 		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
 
 		return oauthResponsePage({
-			title: "Welcome to Hive 😊",
-			message: `Signed in as ${sessionUser.email}`,
-			status: "success",
-			autoClose: true,
-			payload: { type: "oauth_success", user: sessionUser, ...gen_tokens },
-		});
-	};
-
-	login = async (code, state) => {
-		const userType = decodeBase64(state);
-		const { model, label } = this.#resolveModelAndLabel(userType);
-
-		let tokens, userInfo;
-		try {
-			({ tokens, userInfo } = await this.#exchangeCodeForUserInfo(
-				code,
-				FacebookOAuthAction.LOGIN,
-			));
-		} catch (err) {
-			console.error(err);
-			return oauthResponsePage({
-				title: "OAuth Authentication Error",
-				message: "Failed to authenticate with Facebook. Please try again.",
-				status: "error",
-				payload: { type: "oauth_error", code: "AUTHENTICATION_FAILED" },
-			});
-		}
-
-		const user = await model.findOne({ email: userInfo.email });
-
-		if (!user) {
-			return oauthResponsePage({
-				title: "Account Not Found",
-				message: `No ${label} account found with this email. Please sign up first.`,
-				status: "error",
-				payload: { type: "oauth_error", code: "ACCOUNT_NOT_FOUND" },
-			});
-		}
-
-		if (user.authMethod !== AuthMethods.FACEBOOK) {
-			return oauthResponsePage({
-				title: "OAuth Account Error",
-				message: `This ${label} account is not linked with Facebook. Login with email credentials.`,
-				status: "error",
-				payload: { type: "oauth_error", code: "ACCOUNT_EXISTS" },
-			});
-		}
-
-		user.facebook = this.#buildFacebookCredentials(tokens);
-		user.lastLoginAt = new Date();
-		await user.save();
-
-		const { user: sessionUser, gen_tokens } = await this.#finaliseSession(user);
-
-		return oauthResponsePage({
-			title: "Welcome Back",
+			title: isNewUser ? "Welcome to Hive 😊" : "Welcome Back",
 			message: `Signed in as ${sessionUser.email}`,
 			status: "success",
 			autoClose: true,

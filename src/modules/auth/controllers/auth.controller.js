@@ -153,17 +153,8 @@ export class AuthController {
 		);
 	};
 
-	loginWithGoogle = async (req, res) => {
-		const data = await this.authService.loginWithGoogle(req.query);
-		res.setHeader(
-			"Content-Security-Policy",
-			"script-src 'self' 'unsafe-inline'",
-		);
-		return res.status(StatusCodes.OK).send(data);
-	};
-
-	signupWithGoogle = async (req, res) => {
-		const data = await this.authService.signupWithGoogle(req.query);
+	googleCallback = async (req, res) => {
+		const data = await this.authService.googleCallback(req.query);
 		res.setHeader(
 			"Content-Security-Policy",
 			"script-src 'self' 'unsafe-inline'",
@@ -184,17 +175,8 @@ export class AuthController {
 		);
 	};
 
-	loginWithFacebook = async (req, res) => {
-		const data = await this.authService.loginWithFacebook(req.query);
-		res.setHeader(
-			"Content-Security-Policy",
-			"script-src 'self' 'unsafe-inline'",
-		);
-		return res.status(StatusCodes.OK).send(data);
-	};
-
-	signupWithFacebook = async (req, res) => {
-		const data = await this.authService.signupWithFacebook(req.query);
+	facebookCallback = async (req, res) => {
+		const data = await this.authService.facebookCallback(req.query);
 		res.setHeader(
 			"Content-Security-Policy",
 			"script-src 'self' 'unsafe-inline'",
