@@ -99,3 +99,37 @@ export function getGateway(name) {
 	}
 	return gateway;
 }
+
+// ─── Gateway Factory ──────────────────────────────────────────────────────────
+
+/**
+ * Payment gateway factory — provides the default gateway and lists available gateways.
+ */
+export class PaymentGatewayFactory {
+	static DEFAULT = "paystack";
+
+	/**
+	 * Returns the default payment gateway instance.
+	 * @returns {PaymentGatewayInterface}
+	 */
+	static getDefault() {
+		return getGateway(PaymentGatewayFactory.DEFAULT);
+	}
+
+	/**
+	 * Returns the list of registered gateway names.
+	 * @returns {string[]}
+	 */
+	static getAvailable() {
+		return Array.from(gatewayRegistry.keys());
+	}
+
+	/**
+	 * Returns a gateway by name. Falls back to default if name is falsy.
+	 * @param {string} [name]
+	 * @returns {PaymentGatewayInterface}
+	 */
+	static get(name) {
+		return getGateway(name || PaymentGatewayFactory.DEFAULT);
+	}
+}

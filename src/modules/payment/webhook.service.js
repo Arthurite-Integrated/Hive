@@ -2,7 +2,9 @@ import { Payment } from "#models/payment/payment.model";
 import { Withdrawal } from "#models/payment/withdrawal.model";
 import { TeacherBalance } from "#models/payment/teacher-balance.model";
 import { getGateway } from "#services/payment/gateway.interface";
-import "#services/payment/paystack.gateway"; // ensure gateway is registered
+import "#services/payment/paystack.gateway";
+import "#services/payment/stripe.gateway";
+import "#services/payment/flutterwave.gateway";
 import { PaymentQueueService } from "#services/queues/payment.queue.service";
 import { logger } from "#utils/logger";
 

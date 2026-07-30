@@ -4,7 +4,9 @@ import { Course } from "#models/course.model";
 import { Community } from "#modules/community/community.model";
 import { getUserModel } from "#utils/user-model-router";
 import { getGateway } from "#services/payment/gateway.interface";
-import "#services/payment/paystack.gateway"; // ensure gateway is registered
+import "#services/payment/paystack.gateway";
+import "#services/payment/stripe.gateway";
+import "#services/payment/flutterwave.gateway";
 import {
 	throwBadRequestError,
 	throwNotFoundError,
