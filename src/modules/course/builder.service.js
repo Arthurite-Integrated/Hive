@@ -13,20 +13,23 @@ const MAX_VIDEO_SIZE = 5 * 1024 * 1024 * 1024; // 5 GB
 
 /**
  * Extract the Google Drive file ID from a share URL.
- * Supports: /file/d/{id}/, /open?id={id}, /d/{id}/
+ * Supports: /file/d/{id}/, /open?id={id}, /d/{id}/, docs.google.com, workspace domains
  */
 function extractDriveFileId(url) {
 	try {
 		const u = new URL(url);
-		// Pattern: /file/d/{fileId}/
-		const fileMatch = u.pathname.match(/\/file\/d\/([^/]+)/);
-		if (fileMatch) return fileMatch[1];
+
+		// Must be a Google domain (drive.google.com, docs.google.com, etc.)
+		if (!u.hostname.includes("google.com")) return null;
+
+		// Pattern: /d/{fileId}/ — covers /file/d/{id}/, /document/d/{id}/, /spreadsheets/d/{id}/, etc.
+		const dMatch = u.pathname.match(/\/d\/([^/]+)/);
+		if (dMatch) return dMatch[1];
+
 		// Pattern: /open?id={fileId}
 		const openId = u.searchParams.get("id");
 		if (openId) return openId;
-		// Pattern: /d/{fileId}/
-		const dMatch = u.pathname.match(/\/d\/([^/]+)/);
-		if (dMatch) return dMatch[1];
+
 		return null;
 	} catch {
 		return null;
