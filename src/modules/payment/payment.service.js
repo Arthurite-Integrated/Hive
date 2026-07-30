@@ -76,8 +76,14 @@ export class PaymentService {
 
 		// 6. Get user email
 		const UserModel = getUserModel(userType);
-		const user = await UserModel.findById(userId).select("email").lean();
+		const user = await UserModel.findById(userId)
+			.select("email firstName")
+			.lean();
 		if (!user) throwNotFoundError("User not found.");
+		if (!user.email)
+			throwBadRequestError(
+				"Your account has no email address. Please update your profile.",
+			);
 
 		// 7. Create pending Payment document
 		const paymentDoc = {
