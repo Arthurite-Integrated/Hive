@@ -9,4 +9,5 @@ export const NotificationType = {
 	LIVE_CLASS: "live_class",
 	SUBSCRIPTION: "subscription",
 	SYSTEM: "system",
+	PARENT_LINK: "parent_link",
 };
