@@ -69,6 +69,10 @@ const PaymentSchema = new Schema(
 			ref: ModelCollections.COMMUNITY,
 			index: true,
 		},
+		communitySlug: {
+			type: String,
+			trim: true,
+		},
 		courseId: {
 			type: Schema.Types.ObjectId,
 			ref: ModelCollections.COURSE,

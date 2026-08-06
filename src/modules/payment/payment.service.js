@@ -102,6 +102,7 @@ export class PaymentService {
 			paymentDoc.courseId = targetId;
 		} else {
 			paymentDoc.communityId = targetId;
+			paymentDoc.communitySlug = target.slug;
 		}
 
 		const payment = await Payment.create(paymentDoc);
