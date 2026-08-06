@@ -59,13 +59,10 @@ export class FeedService {
 
 		const member = await this._requireActiveMember(community._id, authorId);
 
-		if (isAnnouncement) {
-			const isPrivileged = ["owner", "admin"].includes(member.role);
-			if (!isPrivileged) {
-				throwForbiddenError(
-					"Only community owners and admins can create announcements.",
-				);
-			}
+		// Only owners and admins can create posts
+		const isPrivileged = ["owner", "admin"].includes(member.role);
+		if (!isPrivileged) {
+			throwForbiddenError("Only community owners and admins can create posts.");
 		}
 
 		const post = await CommunityPost.create({
