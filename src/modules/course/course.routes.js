@@ -9,6 +9,7 @@ import {
 	communitySlugCourseParamSchema,
 } from "#validator/course/course.schema";
 import { CourseController } from "#modules/course/course.controller";
+import { resolveCourseCover } from "#modules/course/course.service";
 
 export const courseRouter = Router();
 
@@ -65,7 +66,7 @@ courseRouter.get(
 		]);
 
 		return sendSuccessResponse(res, {
-			data,
+			data: data.map(resolveCourseCover),
 			page: pageNum,
 			limit: limitNum,
 			total,

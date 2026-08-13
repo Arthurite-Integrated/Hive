@@ -7,15 +7,21 @@ import { Community } from "#modules/community/community.model";
 import { CommunityMember } from "#models/community-member.model";
 import { Course } from "#models/course.model";
 import { Lesson } from "#models/lesson.model";
+import { Enrollment } from "#models/enrollment/enrollment.model";
+import { EnrollmentStatus } from "#enums/enrollment/enrollment.enums";
 import { getUserModel } from "#utils/user-model-router";
 import { config } from "#config/config";
 
-function resolveCourseCover(course) {
+function resolveS3Url(key) {
+	if (!key || key.startsWith("http")) return key;
+	return config.aws.cloudfront.domain
+		? `https://${config.aws.cloudfront.domain}/${key}`
+		: `https://${config.aws.s3.bucket}.s3.${config.aws.region}.amazonaws.com/${key}`;
+}
+
+export function resolveCourseCover(course) {
 	if (!course || !course.coverImage) return course;
-	if (course.coverImage.startsWith("http")) return course;
-	course.coverImage = config.aws.cloudfront.domain
-		? `https://${config.aws.cloudfront.domain}/${course.coverImage}`
-		: `https://${config.aws.s3.bucket}.s3.${config.aws.region}.amazonaws.com/${course.coverImage}`;
+	course.coverImage = resolveS3Url(course.coverImage);
 	return course;
 }
 
@@ -71,18 +77,52 @@ export class CourseService {
 
 	/**
 	 * List courses within a community.
+	 * Archived courses are only visible to their instructor or enrolled students.
 	 */
-	list = async (communitySlug, { status, page = 1, limit = 20 } = {}) => {
+	list = async (
+		communitySlug,
+		{ status, page = 1, limit = 20 } = {},
+		requesterId,
+	) => {
 		const community = await Community.findOne({
 			slug: communitySlug,
 			status: "active",
 		}).lean();
 		if (!community) throwNotFoundError("Community not found.");
 
-		const query = {
+		let query = {
 			communityId: community._id,
 			status: status || { $in: ["draft", "published", "archived"] },
 		};
+
+		// Without an explicit status filter, hide archived courses the requester
+		// doesn't own or isn't enrolled in.
+		if (!status && requesterId) {
+			const enrolledCourseIds = await Enrollment.find({
+				studentId: requesterId,
+				status: {
+					$nin: [EnrollmentStatus.CANCELLED, EnrollmentStatus.EXPIRED],
+				},
+			})
+				.select("courseId")
+				.lean();
+
+			query = {
+				communityId: community._id,
+				$or: [
+					{ status: { $ne: "archived" } },
+					{ status: "archived", instructorId: requesterId },
+					...(enrolledCourseIds.length > 0
+						? [
+								{
+									status: "archived",
+									_id: { $in: enrolledCourseIds.map((e) => e.courseId) },
+								},
+							]
+						: []),
+				],
+			};
+		}
 
 		const pageNum = Math.max(1, parseInt(page, 10) || 1);
 		const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
@@ -109,6 +149,7 @@ export class CourseService {
 	/**
 	 * Get a single course by ID. Populates instructor info.
 	 * Draft courses are only visible to their instructor.
+	 * Archived courses are only visible to their instructor or enrolled students.
 	 */
 	getById = async (courseId, requesterId) => {
 		const course = await Course.findOne({
@@ -116,11 +157,25 @@ export class CourseService {
 		}).lean();
 		if (!course) throwNotFoundError("Course not found.");
 
-		if (
-			course.status !== "published" &&
-			String(course.instructorId) !== String(requesterId)
-		) {
-			throwForbiddenError("You do not have access to this course.");
+		const isInstructor =
+			!!requesterId && String(course.instructorId) === String(requesterId);
+
+		if (!isInstructor && course.status !== "published") {
+			if (course.status === "draft") {
+				throwForbiddenError("You do not have access to this course.");
+			}
+
+			// Archived — hidden from everyone except enrolled students.
+			const enrollment =
+				requesterId &&
+				(await Enrollment.findOne({
+					courseId: course._id,
+					studentId: requesterId,
+					status: {
+						$nin: [EnrollmentStatus.CANCELLED, EnrollmentStatus.EXPIRED],
+					},
+				}).lean());
+			if (!enrollment) throwNotFoundError("Course not found.");
 		}
 
 		// Populate instructor name
@@ -130,6 +185,9 @@ export class CourseService {
 			instructor = await InstructorModel.findById(course.instructorId)
 				.select("firstName lastName profilePhoto")
 				.lean();
+			if (instructor?.profilePhoto) {
+				instructor.profilePhoto = resolveS3Url(instructor.profilePhoto);
+			}
 		} catch {
 			// non-critical
 		}

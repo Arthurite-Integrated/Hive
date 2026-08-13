@@ -244,6 +244,19 @@ export class BuilderService {
 
 	// ─── Upload Operations ────────────────────────────────────────────────────
 
+	/** Generate a presigned download URL for a lesson video. */
+	#getVideoDownloadUrl = async (key) => {
+		const { S3Service } = await import("#services/s3.service");
+		const s3 = S3Service.getInstance();
+		const videoBucket =
+			config.aws.s3.bucketPrivate || config.aws.s3.bucket || config.s3.bucket;
+		return s3.generatePresignedDownloadUrl({
+			key,
+			expiresIn: 3600,
+			bucket: videoBucket,
+		});
+	};
+
 	getVideoUploadUrl = async (
 		lessonId,
 		instructorId,
@@ -297,7 +310,8 @@ export class BuilderService {
 		lesson.status = "published";
 		await lesson.save();
 
-		return { lesson, mediaConvertJobId: null };
+		const videoUrl = await this.#getVideoDownloadUrl(key);
+		return { lesson, mediaConvertJobId: null, videoUrl };
 	};
 
 	getPdfUploadUrl = async (lessonId, instructorId, { contentType }) => {
@@ -383,6 +397,9 @@ export class BuilderService {
 
 		const lessonsByModule = {};
 		for (const lesson of lessons) {
+			if (lesson.type === "video" && lesson.videoKey) {
+				lesson.videoUrl = await this.#getVideoDownloadUrl(lesson.videoKey);
+			}
 			const mid = String(lesson.moduleId);
 			if (!lessonsByModule[mid]) lessonsByModule[mid] = [];
 			lessonsByModule[mid].push(lesson);

@@ -35,10 +35,10 @@ export class LearningService {
 	 * Avoids N+1 by fetching all data in parallel.
 	 */
 	getCourseData = async (courseId, studentId) => {
-		// 1. Find course (published)
+		// 1. Find course (published, or archived for previously enrolled students)
 		const course = await Course.findOne({
 			_id: courseId,
-			status: "published",
+			status: { $in: ["published", "archived"] },
 		}).lean();
 		if (!course) {
 			throwNotFoundError("Course not found.");

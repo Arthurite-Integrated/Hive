@@ -36,7 +36,11 @@ export class CourseController {
 	};
 
 	list = async (req, res) => {
-		const result = await this.courseService.list(req.params.slug, req.query);
+		const result = await this.courseService.list(
+			req.params.slug,
+			req.query,
+			req.user._id,
+		);
 		return sendSuccessResponse(res, {
 			data: result.data,
 			page: result.page,
