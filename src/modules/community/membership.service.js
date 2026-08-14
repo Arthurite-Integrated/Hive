@@ -8,6 +8,14 @@ import { CommunityMember } from "#models/community-member.model";
 import { getUserModel } from "#utils/user-model-router";
 import { Instructor } from "#modules/instructor/instructor.model";
 import { Student } from "#modules/student/student.model";
+import { config } from "#config/config";
+
+function resolveAvatarUrl(key) {
+	if (!key || key.startsWith("http")) return key;
+	return config.aws.cloudfront.domain
+		? `https://${config.aws.cloudfront.domain}/${key}`
+		: `https://${config.aws.s3.bucket}.s3.${config.aws.region}.amazonaws.com/${key}`;
+}
 
 export class MembershipService {
 	static instance = null;
@@ -202,6 +210,9 @@ export class MembershipService {
 				.select("firstName lastName email profilePhoto")
 				.lean();
 			for (const u of users) {
+				if (u.profilePhoto) {
+					u.profilePhoto = resolveAvatarUrl(u.profilePhoto);
+				}
 				usersById[String(u._id)] = u;
 			}
 		}

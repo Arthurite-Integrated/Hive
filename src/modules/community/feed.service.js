@@ -57,12 +57,11 @@ export class FeedService {
 			throwNotFoundError("Community not found.");
 		}
 
-		const member = await this._requireActiveMember(community._id, authorId);
+		await this._requireActiveMember(community._id, authorId);
 
-		// Only owners and admins can create posts
-		const isPrivileged = ["owner", "admin"].includes(member.role);
-		if (!isPrivileged) {
-			throwForbiddenError("Only community owners and admins can create posts.");
+		// Only instructors can create posts
+		if (authorType !== "instructor") {
+			throwForbiddenError("Only instructors can create posts.");
 		}
 
 		const post = await CommunityPost.create({
