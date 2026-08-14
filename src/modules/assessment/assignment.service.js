@@ -48,6 +48,69 @@ export class AssignmentService {
 			throwBadRequestError("An assignment already exists for this lesson.");
 
 		const assignment = await Assignment.create({ lessonId, ...payload });
+
+		if (lesson.status !== "published") {
+			lesson.status = "published";
+			await lesson.save();
+		}
+
+		return assignment;
+	};
+
+	/**
+	 * Get the assignment for a lesson (instructor). Returns null when none exists.
+	 */
+	getByLesson = async (lessonId, instructorId) => {
+		const lesson = await Lesson.findOne({
+			_id: lessonId,
+			type: "assignment",
+			status: { $ne: "archived" },
+		});
+		if (!lesson) throwNotFoundError("Assignment lesson not found.");
+
+		const course = await Course.findById(lesson.courseId);
+		if (!course || String(course.instructorId) !== String(instructorId)) {
+			throwForbiddenError(
+				"You do not have permission to view this assignment.",
+			);
+		}
+
+		const assignment = await Assignment.findOne({ lessonId }).lean();
+		return { assignment: assignment || null };
+	};
+
+	/**
+	 * Instructor updates an assignment.
+	 */
+	updateAssignment = async (assignmentId, instructorId, payload) => {
+		const assignment = await Assignment.findById(assignmentId);
+		if (!assignment) throwNotFoundError("Assignment not found.");
+
+		const lesson = await Lesson.findById(assignment.lessonId);
+		const course = await Course.findById(lesson?.courseId);
+		if (!course || String(course.instructorId) !== String(instructorId)) {
+			throwForbiddenError(
+				"You do not have permission to update this assignment.",
+			);
+		}
+
+		const ALLOWED = [
+			"title",
+			"instructions",
+			"dueDate",
+			"maxScore",
+			"submissionType",
+			"allowedFileTypes",
+			"maxFileSize",
+			"rubric",
+		];
+		for (const field of ALLOWED) {
+			if (payload[field] !== undefined) {
+				assignment[field] = payload[field];
+			}
+		}
+
+		await assignment.save();
 		return assignment;
 	};
 

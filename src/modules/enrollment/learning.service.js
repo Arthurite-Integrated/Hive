@@ -5,6 +5,8 @@ import {
 import { Course } from "#models/course.model";
 import { Module } from "#models/module.model";
 import { Lesson } from "#models/lesson.model";
+import { Assignment } from "#models/assessment/assignment.model";
+import { Quiz } from "#models/assessment/quiz.model";
 import { Enrollment } from "#models/enrollment/enrollment.model";
 import { LessonProgress } from "#models/enrollment/lesson-progress.model";
 import { Certificate } from "#models/certificate.model";
@@ -115,8 +117,24 @@ export class LearningService {
 					key,
 					expiresIn: 3600,
 					bucket: defaultBucket,
+					responseContentType: "application/pdf",
+					responseContentDisposition: "inline",
 				});
 			}
+		}
+
+		if (obj.type === "assignment") {
+			const assignment = await Assignment.findOne({ lessonId: obj._id })
+				.select("_id")
+				.lean();
+			if (assignment) obj.assignmentId = String(assignment._id);
+		}
+
+		if (obj.type === "quiz") {
+			const quiz = await Quiz.findOne({ lessonId: obj._id })
+				.select("_id")
+				.lean();
+			if (quiz) obj.quizId = String(quiz._id);
 		}
 
 		if (obj.type === "drive") {

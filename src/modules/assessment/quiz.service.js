@@ -47,7 +47,33 @@ export class QuizService {
 			throwBadRequestError("A quiz already exists for this lesson.");
 
 		const quiz = await Quiz.create({ lessonId, ...payload });
+
+		if (lesson.status !== "published") {
+			lesson.status = "published";
+			await lesson.save();
+		}
+
 		return quiz;
+	};
+
+	/**
+	 * Get the quiz for a lesson (instructor). Returns null when none exists.
+	 */
+	getByLesson = async (lessonId, instructorId) => {
+		const lesson = await Lesson.findOne({
+			_id: lessonId,
+			type: "quiz",
+			status: { $ne: "archived" },
+		});
+		if (!lesson) throwNotFoundError("Quiz lesson not found.");
+
+		const course = await Course.findById(lesson.courseId);
+		if (!course || String(course.instructorId) !== String(instructorId)) {
+			throwForbiddenError("You do not have permission to view this quiz.");
+		}
+
+		const quiz = await Quiz.findOne({ lessonId }).lean();
+		return { quiz: quiz || null };
 	};
 
 	/**

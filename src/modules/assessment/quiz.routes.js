@@ -72,6 +72,14 @@ quizRouter.post(
 	controller.createQuiz,
 );
 
+// GET /lessons/:lessonId/quiz — instructor fetches quiz for a lesson
+quizRouter.get(
+	"/lessons/:lessonId/quiz",
+	authenticate,
+	zodEngine.validate.params(lessonIdParam),
+	controller.getByLesson,
+);
+
 // GET /quizzes/:quizId
 quizRouter.get(
 	"/quizzes/:quizId",

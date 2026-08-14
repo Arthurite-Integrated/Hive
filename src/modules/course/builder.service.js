@@ -257,6 +257,20 @@ export class BuilderService {
 		});
 	};
 
+	/** Generate a presigned download URL for a lesson PDF. */
+	#getPdfDownloadUrl = async (key) => {
+		const { S3Service } = await import("#services/s3.service");
+		const s3 = S3Service.getInstance();
+		const defaultBucket = config.aws.s3.bucket || config.s3.bucket;
+		return s3.generatePresignedDownloadUrl({
+			key,
+			expiresIn: 3600,
+			bucket: defaultBucket,
+			responseContentType: "application/pdf",
+			responseContentDisposition: "inline",
+		});
+	};
+
 	getVideoUploadUrl = async (
 		lessonId,
 		instructorId,
@@ -358,7 +372,8 @@ export class BuilderService {
 		lesson.status = "published";
 		await lesson.save();
 
-		return lesson;
+		const pdfUrl = await this.#getPdfDownloadUrl(key);
+		return { lesson, pdfUrl };
 	};
 
 	addAttachment = async (lessonId, instructorId, { name, key, size, type }) => {
@@ -399,6 +414,9 @@ export class BuilderService {
 		for (const lesson of lessons) {
 			if (lesson.type === "video" && lesson.videoKey) {
 				lesson.videoUrl = await this.#getVideoDownloadUrl(lesson.videoKey);
+			}
+			if (lesson.type === "pdf" && lesson.pdfKey) {
+				lesson.pdfUrl = await this.#getPdfDownloadUrl(lesson.pdfKey);
 			}
 			const mid = String(lesson.moduleId);
 			if (!lessonsByModule[mid]) lessonsByModule[mid] = [];

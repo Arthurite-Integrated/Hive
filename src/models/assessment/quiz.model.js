@@ -1,4 +1,5 @@
 import { ModelCollections } from "#enums/models/index";
+import { QuizType } from "#enums/assessment/quiz.enums";
 import { Schema, model } from "mongoose";
 
 const collectionName = ModelCollections.QUIZ;
@@ -15,7 +16,7 @@ const QuestionSchema = new Schema(
 	{
 		type: {
 			type: String,
-			enum: {},
+			enum: Object.values(QuizType),
 			required: true,
 		},
 		questionText: { type: String, required: true },

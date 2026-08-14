@@ -35,6 +35,17 @@ export class QuizController {
 	};
 
 	/**
+	 * GET /lessons/:lessonId/quiz
+	 */
+	getByLesson = async (req, res) => {
+		const data = await this.quizService.getByLesson(
+			req.params.lessonId,
+			req.user._id,
+		);
+		return sendSuccessResponse(res, { data });
+	};
+
+	/**
 	 * GET /quizzes/:quizId
 	 */
 	getQuiz = async (req, res) => {

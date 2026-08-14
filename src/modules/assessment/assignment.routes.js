@@ -74,6 +74,23 @@ assignmentRouter.post(
 	controller.createAssignment,
 );
 
+// GET /lessons/:lessonId/assignment — instructor fetches assignment for a lesson
+assignmentRouter.get(
+	"/lessons/:lessonId/assignment",
+	authenticate,
+	zodEngine.validate.params(lessonIdParam),
+	controller.getByLesson,
+);
+
+// PATCH /assignments/:assignmentId — instructor updates assignment
+assignmentRouter.patch(
+	"/assignments/:assignmentId",
+	authenticate,
+	zodEngine.validate.params(assignmentIdParam),
+	zodEngine.validate.body(createAssignmentBody.partial()),
+	controller.updateAssignment,
+);
+
 // ─── Anyone Authenticated: Get Assignment ────────────────────────────────────
 
 // GET /assignments/:assignmentId

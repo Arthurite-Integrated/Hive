@@ -35,6 +35,32 @@ export class AssignmentController {
 	};
 
 	/**
+	 * GET /lessons/:lessonId/assignment
+	 */
+	getByLesson = async (req, res) => {
+		const data = await this.assignmentService.getByLesson(
+			req.params.lessonId,
+			req.user._id,
+		);
+		return sendSuccessResponse(res, { data });
+	};
+
+	/**
+	 * PATCH /assignments/:assignmentId
+	 */
+	updateAssignment = async (req, res) => {
+		const data = await this.assignmentService.updateAssignment(
+			req.params.assignmentId,
+			req.user._id,
+			req.body,
+		);
+		return sendSuccessResponse(res, {
+			message: "Assignment updated.",
+			data,
+		});
+	};
+
+	/**
 	 * GET /assignments/:assignmentId
 	 */
 	getAssignment = async (req, res) => {
